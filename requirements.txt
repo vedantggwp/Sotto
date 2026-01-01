@@ -1,0 +1,31 @@
+# Sotto - Voice Control for macOS
+# Core dependencies
+
+# Audio processing
+sounddevice>=0.4.6
+numpy>=1.24.0
+
+# Speech-to-text (Whisper)
+faster-whisper>=1.0.0
+
+# Global hotkeys and keyboard control
+pynput>=1.7.6
+
+# macOS menubar app
+rumps>=0.4.0
+
+# macOS native UI (for overlay)
+pyobjc-core>=10.0
+pyobjc-framework-Cocoa>=10.0
+pyobjc-framework-Quartz>=10.0
+
+# Configuration management
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0
+
+# Audio feedback
+simpleaudio>=1.0.4
+
+# Utilities
+rich>=13.0.0  # Beautiful terminal output
