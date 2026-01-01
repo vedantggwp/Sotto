@@ -80,7 +80,6 @@ class CommandExecutor:
         """Send status message"""
         if self._on_status:
             self._on_status(message)
-        print(f"[Executor] {message}")
     
     def execute(self, command_name: str, args: Dict[str, Any] = None) -> bool:
         """

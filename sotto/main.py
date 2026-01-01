@@ -137,7 +137,6 @@ class Sotto:
         self._is_recording = True
         self.overlay.show_listening()
         self.audio.start_recording()
-        print("🎤 Recording started")
     
     def _stop_recording(self):
         """Stop recording and process audio"""

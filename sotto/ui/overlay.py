@@ -28,10 +28,12 @@ class Overlay:
         self._text_field = None
         self._hide_timer = None
         self._initialized = False
+        self._init_failed = False  # Track if init already failed
+        self._last_message = ""  # Prevent duplicate messages
         
     def _init_window(self):
         """Initialize the native window (lazy loading)"""
-        if self._initialized:
+        if self._initialized or self._init_failed:
             return
             
         try:
@@ -41,7 +43,7 @@ class Overlay:
                 NSScreen, NSMakeRect, NSTextAlignmentCenter, NSView,
                 NSApplication
             )
-            from Quartz import kCGWindowLevelFloating
+            # Note: kCGWindowLevelFloating moved/renamed in newer PyObjC, using NSFloatingWindowLevel instead
             
             # Get screen dimensions
             screen = NSScreen.mainScreen()
@@ -109,11 +111,13 @@ class Overlay:
             self._initialized = True
             
         except ImportError as e:
-            print(f"Could not initialize overlay (PyObjC not available): {e}")
+            print(f"[Sotto] Overlay unavailable (using terminal output): {e}")
             self._initialized = False
+            self._init_failed = True
         except Exception as e:
-            print(f"Error initializing overlay: {e}")
+            print(f"[Sotto] Overlay error (using terminal output): {e}")
             self._initialized = False
+            self._init_failed = True
     
     def show(self, text: str, icon: str = ""):
         """
@@ -127,8 +131,11 @@ class Overlay:
             self._init_window()
         
         if not self._initialized or not self._window:
-            # Fallback: print to console
-            print(f"[Sotto] {icon} {text}")
+            # Fallback: print to console (avoid duplicates)
+            display_text = f"{icon} {text}" if icon else text
+            if display_text != self._last_message:
+                print(f"[Sotto] {display_text}")
+                self._last_message = display_text
             return
         
         try:
