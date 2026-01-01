@@ -97,10 +97,14 @@ class Sotto:
         """Handle key press events"""
         self._current_keys.add(key)
         
+        # Debug: show key presses
+        print(f"Key: {key}")
+        
         # Check for push-to-talk
         if self._push_to_talk_keys.issubset(self._current_keys):
             if not self._push_to_talk_pressed and self.config.mode == "push_to_talk":
                 self._push_to_talk_pressed = True
+                print("🎤 Recording...")
                 self._start_recording()
         
         # Check for toggle listening
@@ -131,12 +135,15 @@ class Sotto:
     
     def _start_recording(self):
         """Start recording audio"""
+        print("[Main] _start_recording called")
         if self._is_recording:
+            print("[Main] Already recording, skipping")
             return
         
         self._is_recording = True
-        self.overlay.show_listening()
+        print("[Main] Calling audio.start_recording...")
         self.audio.start_recording()
+        print("[Main] Audio started")
     
     def _stop_recording(self):
         """Stop recording and process audio"""
@@ -204,13 +211,14 @@ class Sotto:
     
     def _process_audio(self, audio_data):
         """Process recorded audio"""
+        print(f"[Process] Starting transcription of {len(audio_data)} samples...")
         try:
             # Transcribe
-            self.overlay.show("Processing...", "⏳")
             text, confidence = self.transcriber.transcribe(
                 audio_data,
                 language=self.config.transcription.language
             )
+            print(f"[Process] Result: '{text}' (conf={confidence:.2f})")
             
             if not text or confidence < 0.3:
                 self.overlay.show("Could not understand", "❓")

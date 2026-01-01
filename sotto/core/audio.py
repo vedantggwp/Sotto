@@ -47,7 +47,9 @@ class AudioEngine:
     
     def start_recording(self, on_audio: Optional[Callable] = None):
         """Start recording from microphone"""
+        print(f"[Audio] Starting recording...")
         if self._is_recording:
+            print("[Audio] Already recording!")
             return
         
         self._is_recording = True
@@ -65,6 +67,7 @@ class AudioEngine:
     
     def _record_loop(self):
         """Main recording loop"""
+        print("[Audio] Starting input stream...")
         try:
             with sd.InputStream(
                 samplerate=self.SAMPLE_RATE,
@@ -82,6 +85,7 @@ class AudioEngine:
     
     def stop_recording(self) -> np.ndarray:
         """Stop recording and return captured audio"""
+        print(f"[Audio] Stopping... buffer has {len(self._audio_buffer)} chunks")
         self._stop_event.set()
         
         if self._record_thread:
