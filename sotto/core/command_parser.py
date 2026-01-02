@@ -57,7 +57,10 @@ class CommandParser:
         # System Commands
         (r"^volume\s+(up|down|mute|unmute)$", "volume", lambda m: {"action": m.group(1)}),
         (r"^(mute|unmute)$", "volume", lambda m: {"action": m.group(1)}),
+        (r"^(?:set\s+)?volume\s+(?:to\s+)?(\d+)(?:\s*%)?$", "volume_set", lambda m: {"level": int(m.group(1))}),
+        (r"^volume\s+(\d+)(?:\s*%)?$", "volume_set", lambda m: {"level": int(m.group(1))}),
         (r"^brightness\s+(up|down)$", "brightness", lambda m: {"action": m.group(1)}),
+        (r"^(?:set\s+)?brightness\s+(?:to\s+)?(\d+)(?:\s*%)?$", "brightness_set", lambda m: {"level": int(m.group(1))}),
         (r"^(take\s+)?screenshot$", "screenshot", None),
         (r"^(lock\s+)?screen$", "lock_screen", None),
         (r"^lock$", "lock_screen", None),
@@ -141,9 +144,11 @@ class CommandParser:
                 intent_type=IntentType.DICTATION,
                 text=""
             )
-        
-        # Normalize text
+
+        # Normalize text - strip punctuation and lowercase
         normalized = text.strip().lower()
+        # Remove trailing punctuation that Whisper often adds
+        normalized = normalized.rstrip('.,!?;:')
         
         # Check against command patterns
         for pattern, command_name, arg_extractor in self._compiled_patterns:

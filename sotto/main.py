@@ -12,11 +12,55 @@ from typing import Optional
 from pynput import keyboard
 
 from .config import get_config, ensure_directories, SottoConfig
+
+
+def check_accessibility_permissions() -> bool:
+    """Check if we have accessibility permissions for global hotkeys."""
+    try:
+        # Use ApplicationServices to check accessibility trust
+        from ApplicationServices import AXIsProcessTrusted
+        return AXIsProcessTrusted()
+    except ImportError:
+        # Fallback: assume we need to warn if we get the pynput error
+        return True  # Can't check, assume OK
+    except Exception:
+        return True
+
+
+def print_accessibility_instructions():
+    """Print instructions for granting accessibility permissions."""
+    print("\n" + "=" * 60)
+    print("⚠️  ACCESSIBILITY PERMISSIONS REQUIRED")
+    print("=" * 60)
+    print("""
+Sotto needs Accessibility permissions to capture hotkeys.
+
+To enable:
+1. Open System Settings > Privacy & Security > Accessibility
+2. Click the '+' button
+3. Add your terminal app (Terminal, iTerm2, etc.) or the Sotto app
+4. Toggle the switch to enable it
+5. Restart Sotto
+
+Without this permission, push-to-talk hotkeys won't work.
+You can still use 'always_listening' mode via the menubar.
+""")
+    print("=" * 60 + "\n")
+
+
 from .core.audio import AudioEngine, VoiceActivityDetector
 from .core.transcriber import Transcriber
 from .core.command_parser import CommandParser, IntentType
 from .core.executor import CommandExecutor
-from .ui.overlay import create_overlay
+
+# Global debug flag
+DEBUG = False
+
+
+def debug_print(*args, **kwargs):
+    """Print only if debug mode is enabled"""
+    if DEBUG:
+        print(*args, **kwargs)
 
 
 class Sotto:
@@ -24,18 +68,24 @@ class Sotto:
     Main Sotto application.
     Coordinates all components for voice control.
     """
-    
-    def __init__(self):
-        """Initialize Sotto"""
+
+    def __init__(self, gui_mode: bool = False):
+        """
+        Initialize Sotto.
+
+        Args:
+            gui_mode: If True, delay overlay creation until after rumps starts
+        """
         print("🎙️ Initializing Sotto...")
-        
+
         # Ensure directories exist
         ensure_directories()
-        
+
         # Load configuration
         self.config = get_config()
-        
-        # Initialize components
+        self._gui_mode = gui_mode
+
+        # Initialize core components (no UI yet)
         self.audio = AudioEngine()
         self.transcriber = Transcriber(
             model_name=self.config.transcription.model,
@@ -44,22 +94,33 @@ class Sotto:
         )
         self.parser = CommandParser()
         self.executor = CommandExecutor(on_status=self._on_executor_status)
-        self.overlay = create_overlay(
-            duration=self.config.feedback.overlay_duration,
-            position=self.config.feedback.overlay_position
-        )
-        
+
+        # Overlay is created lazily (after rumps starts in GUI mode)
+        self._overlay = None
+
         # State
         self._is_listening = False
         self._is_recording = False
         self._running = True
         self._hotkey_listener = None
         self._push_to_talk_pressed = False
-        
+        self.menubar = None
+
         # Parse hotkeys
         self._setup_hotkeys()
-        
+
         print("✅ Sotto initialized")
+
+    @property
+    def overlay(self):
+        """Lazy overlay creation - ensures it's created after NSApplication exists"""
+        if self._overlay is None:
+            from .ui.overlay import create_overlay
+            self._overlay = create_overlay(
+                duration=self.config.feedback.overlay_duration,
+                position=self.config.feedback.overlay_position
+            )
+        return self._overlay
     
     def _setup_hotkeys(self):
         """Setup global hotkeys"""
@@ -90,21 +151,27 @@ class Sotto:
     
     def _on_executor_status(self, message: str):
         """Handle executor status messages"""
+        # Always print to terminal
+        print(f"[Sotto] {message}")
+
+        # Show in overlay with appropriate icon
         if self.config.feedback.overlay_enabled:
-            self.overlay.show(message, "⚡")
+            if message.startswith("✅"):
+                self.overlay.show_success(message)
+            elif message.startswith("❌") or message.startswith("❓"):
+                self.overlay.show_error(message)
+            else:
+                self.overlay.show(message, "⚡")
     
     def _on_key_press(self, key):
         """Handle key press events"""
         self._current_keys.add(key)
-        
-        # Debug: show key presses
-        print(f"Key: {key}")
-        
+
         # Check for push-to-talk
         if self._push_to_talk_keys.issubset(self._current_keys):
             if not self._push_to_talk_pressed and self.config.mode == "push_to_talk":
                 self._push_to_talk_pressed = True
-                print("🎤 Recording...")
+                print("[Sotto] 🎤 Recording... (release hotkey to stop)")
                 self._start_recording()
         
         # Check for toggle listening
@@ -135,28 +202,35 @@ class Sotto:
     
     def _start_recording(self):
         """Start recording audio"""
-        print("[Main] _start_recording called")
         if self._is_recording:
-            print("[Main] Already recording, skipping")
             return
-        
+
         self._is_recording = True
-        print("[Main] Calling audio.start_recording...")
         self.audio.start_recording()
-        print("[Main] Audio started")
+
+        # Show recording indicator
+        if self.config.feedback.overlay_enabled:
+            self.overlay.show("🎤 Listening...", "")
     
     def _stop_recording(self):
         """Stop recording and process audio"""
         if not self._is_recording:
             return
-        
+
         self._is_recording = False
         audio_data = self.audio.stop_recording()
-        print(f"⏹️ Recording stopped ({len(audio_data)} samples)")
-        
+        duration = len(audio_data) / 16000  # 16kHz sample rate
+
         # Process in background
-        if len(audio_data) > 0:
+        if len(audio_data) > 0 and duration > 0.3:  # At least 0.3 seconds
+            print(f"[Sotto] ⏳ Processing {duration:.1f}s of audio...")
+            if self.config.feedback.overlay_enabled:
+                self.overlay.show("Processing...", "⏳")
             threading.Thread(target=self._process_audio, args=(audio_data,), daemon=True).start()
+        else:
+            print("[Sotto] Recording too short, ignoring")
+            if self.config.feedback.overlay_enabled:
+                self.overlay.show("Too short", "❓")
     
     def _start_listening(self):
         """Start always-listening mode"""
@@ -211,40 +285,46 @@ class Sotto:
     
     def _process_audio(self, audio_data):
         """Process recorded audio"""
-        print(f"[Process] Starting transcription of {len(audio_data)} samples...")
+        debug_print(f"[Process] Starting transcription of {len(audio_data)} samples...")
         try:
             # Transcribe
             text, confidence = self.transcriber.transcribe(
                 audio_data,
                 language=self.config.transcription.language
             )
-            print(f"[Process] Result: '{text}' (conf={confidence:.2f})")
-            
-            if not text or confidence < 0.3:
+
+            if not text:
                 self.overlay.show("Could not understand", "❓")
+                print("[Sotto] No speech detected")
                 return
-            
-            print(f"📝 Transcribed: '{text}' (confidence: {confidence:.2f})")
-            
+
             # Parse intent
             intent = self.parser.parse(text)
             display = self.parser.format_for_display(intent)
-            
+
+            # Always show what was heard and what we're doing
+            print(f"[Sotto] Heard: '{text}'")
+            print(f"[Sotto] Action: {display}")
+
             if self.config.feedback.overlay_enabled:
                 self.overlay.show(display)
-            
+
             # Execute action
             if intent.intent_type == IntentType.COMMAND:
                 if intent.command_name == "unknown":
+                    print(f"[Sotto] ❓ Unknown command")
                     self.overlay.show(f"Unknown command: {text}", "❓")
                 else:
+                    print(f"[Sotto] ⚡ Executing: {intent.command_name}")
                     self.executor.execute(intent.command_name, intent.command_args)
-            
+
             elif intent.intent_type == IntentType.CONTROL:
+                print(f"[Sotto] 🎛️ Control: {intent.command_name}")
                 self._handle_control_command(intent.command_name)
-            
+
             elif intent.intent_type == IntentType.DICTATION:
                 # Type the text
+                print(f"[Sotto] 📝 Typing: {text}")
                 self.executor.type_text(text + " ")
                 self.overlay.show_transcription(text)
             
@@ -268,6 +348,10 @@ class Sotto:
     
     def run(self):
         """Run the Sotto application"""
+        # Check accessibility permissions
+        if not check_accessibility_permissions():
+            print_accessibility_instructions()
+
         print("\n" + "=" * 50)
         print("🎙️ Sotto is running!")
         print("=" * 50)
@@ -319,71 +403,118 @@ class Sotto:
     
     def run_with_menubar(self):
         """Run with menubar UI (for GUI mode)"""
+        import rumps
         from .ui.menubar import SottoMenubar
-        
+
+        sotto_app = self  # Reference for callbacks
+
         def on_toggle():
-            if self.config.mode == "push_to_talk":
-                # In push-to-talk mode, toggle doesn't make sense from menu
+            if sotto_app.config.mode == "push_to_talk":
                 pass
             else:
-                if self._is_listening:
-                    self._stop_listening()
+                if sotto_app._is_listening:
+                    sotto_app._stop_listening()
                 else:
-                    self._start_listening()
-        
+                    sotto_app._start_listening()
+
         def on_mode_change(mode):
-            self.config.mode = mode
-            if mode == "always_listening" and not self._is_listening:
-                self._start_listening()
+            sotto_app.config.mode = mode
+            if mode == "always_listening" and not sotto_app._is_listening:
+                sotto_app._start_listening()
             elif mode == "push_to_talk":
-                self._stop_listening()
-        
+                sotto_app._stop_listening()
+
+        def on_model_change(model):
+            sotto_app.config.transcription.model = model
+            print(f"🔄 Switching to model: {model}")
+            sotto_app.transcriber = Transcriber(
+                model_name=model,
+                device=sotto_app.config.transcription.device,
+                compute_type=sotto_app.config.transcription.compute_type
+            )
+            sotto_app.transcriber.load_model()
+            sotto_app.overlay.show_success(f"Model: {model}")
+
         def on_quit():
-            self._running = False
-            self._is_listening = False
-        
-        # Load model
-        print("📦 Loading Whisper model...")
-        self.transcriber.load_model()
-        
-        # Setup hotkey listener
-        self._hotkey_listener = keyboard.Listener(
-            on_press=self._on_key_press,
-            on_release=self._on_key_release
-        )
-        self._hotkey_listener.start()
-        
-        # Create and run menubar app
+            sotto_app._running = False
+            sotto_app._is_listening = False
+            if sotto_app._hotkey_listener:
+                sotto_app._hotkey_listener.stop()
+
+        # Create menubar app FIRST (this sets up NSApplication)
         self.menubar = SottoMenubar(
             on_toggle_listening=on_toggle,
             on_mode_change=on_mode_change,
+            on_model_change=on_model_change,
             on_quit=on_quit
         )
-        
-        self.overlay.show_success("Sotto is ready!")
+
+        # Use rumps timer to initialize after runloop starts
+        @rumps.timer(0.5)  # Run once after 0.5 seconds
+        def initialize_components(timer):
+            timer.stop()  # Only run once
+
+            print("📦 Loading Whisper model...")
+            sotto_app.transcriber.load_model()
+            print("✅ Model loaded")
+
+            # Start hotkey listener
+            sotto_app._hotkey_listener = keyboard.Listener(
+                on_press=sotto_app._on_key_press,
+                on_release=sotto_app._on_key_release
+            )
+            sotto_app._hotkey_listener.start()
+            print("✅ Hotkey listener started")
+
+            # NOW create and show overlay (NSApplication exists)
+            sotto_app.overlay.show_success("Sotto is ready!")
+            print("✅ Sotto is ready!")
+
+        # Start the menubar app (this blocks and runs the NSRunLoop)
+        print("Starting menubar...")
         self.menubar.run()
 
 
 def main():
     """Main entry point"""
+    global DEBUG
     import argparse
-    
+    import os
+
     parser = argparse.ArgumentParser(description="Sotto - Voice Control for macOS")
     parser.add_argument("--cli", action="store_true", help="Run in CLI mode (no menubar)")
-    parser.add_argument("--model", default="base.en", help="Whisper model to use")
+    parser.add_argument("--model", help="Whisper model to use (overrides config)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
     args = parser.parse_args()
-    
-    # Update config if model specified
+
+    # Set debug mode
+    DEBUG = args.debug
+    if args.debug:
+        os.environ['SOTTO_DEBUG'] = '1'
+
+    # Load config
     config = get_config()
+
+    # Override model if specified on command line
     if args.model:
         config.transcription.model = args.model
-    
-    # Create and run app
-    app = Sotto()
-    
+
+    print("=" * 50)
+    print("🎙️ Sotto - Voice Control for macOS")
+    print("=" * 50)
+
     if args.cli:
+        # CLI mode - terminal only, create overlay immediately
+        print("Running in CLI mode (no menubar)")
+        app = Sotto(gui_mode=False)
         app.run()
     else:
+        # GUI mode - menubar app, delay overlay until rumps starts
+        print("Running with menubar UI")
+        print(f"Hotkey: {config.hotkeys.push_to_talk}")
+        print(f"Model: {config.transcription.model}")
+        print("=" * 50)
+        app = Sotto(gui_mode=True)
         app.run_with_menubar()
 
 

@@ -26,7 +26,7 @@ class HotkeyConfig(BaseModel):
 
 class TranscriptionConfig(BaseModel):
     """Whisper transcription settings"""
-    model: str = Field(default="base.en", description="Whisper model size")
+    model: str = Field(default="small.en", description="Whisper model size")
     language: str = Field(default="en", description="Language code")
     device: str = Field(default="auto", description="Device: auto, cpu, cuda, mps")
     compute_type: str = Field(default="int8", description="Compute type for faster inference")
@@ -76,7 +76,8 @@ class SottoConfig(BaseModel):
         """Save configuration to file"""
         SOTTO_DIR.mkdir(parents=True, exist_ok=True)
         with open(CONFIG_FILE, 'w') as f:
-            yaml.dump(self.model_dump(exclude={'is_listening'}), f, default_flow_style=False)
+            # Use safe_dump to avoid Python-specific YAML tags
+            yaml.safe_dump(self.model_dump(exclude={'is_listening'}), f, default_flow_style=False)
     
     def get_model_path(self) -> Path:
         """Get path to the Whisper model"""

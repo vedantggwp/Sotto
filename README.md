@@ -1,5 +1,7 @@
 # 🎙️ Sotto - Voice Control for macOS
 
+> **v0.2.0-beta** - See [CHANGELOG.md](CHANGELOG.md) for what's new
+
 **Near-zero latency voice control and dictation for macOS using local Whisper AI.**
 
 Sotto lets you control your Mac and type anywhere using your voice. All processing happens locally on your Mac - no cloud required, no data sent anywhere.
@@ -11,17 +13,30 @@ Sotto lets you control your Mac and type anywhere using your voice. All processi
 - **⚡ Smart Commands** - Say "open Safari", "volume up", "copy", etc.
 - **📝 Dictation** - Speak and text appears at your cursor
 - **🔒 Privacy First** - 100% local, no internet required
-- **🎨 macOS Native** - Menubar app with overlay feedback
+- **🎨 macOS Native** - Menubar app with floating HUD overlay
 
 ## 🚀 Quick Start
 
 ```bash
-cd /Users/ved/Documents/Projects/Sotto
+# Clone and setup
+git clone https://github.com/YOUR_USERNAME/Sotto.git
+cd Sotto
+python -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
+
+# Run with GUI (menubar app)
+python -m sotto.main
+
+# Or run in CLI mode
 python -m sotto.main --cli
 ```
 
 **Default hotkey:** Hold `Cmd+Shift+Space` and speak, release to transcribe.
+
+### Required Permissions
+- **Accessibility**: System Settings → Privacy & Security → Accessibility (for hotkeys)
+- **Microphone**: System Settings → Privacy & Security → Microphone (for audio)
 
 ## 📁 Project Structure
 
@@ -118,7 +133,9 @@ User settings management:
 - "switch to Finder"
 
 ### System
-- "volume up" / "volume down" / "mute"
+- "volume up" / "volume down" / "mute" / "unmute"
+- "volume 50" / "set volume to 80" (percentage)
+- "brightness up" / "brightness down"
 - "screenshot"
 - "lock screen"
 
@@ -150,7 +167,7 @@ hotkeys:
   toggle_listening: "<cmd>+<shift>+l"
 
 transcription:
-  model: base.en    # tiny.en, base.en, small.en, medium.en
+  model: small.en   # tiny.en, base.en, small.en, medium.en, large-v3
   language: en
   device: auto      # auto, cpu, cuda
 

@@ -1,60 +1,56 @@
 """
 Sotto Overlay Window
-Floating feedback window showing transcription results.
+Floating HUD feedback window showing transcription results.
 """
 
 import threading
 import time
 from typing import Optional
+import queue
 
 
-class Overlay:
+class HUDOverlay:
     """
-    Floating overlay window for showing transcription feedback.
-    Uses native macOS APIs via PyObjC.
+    Native macOS floating HUD overlay using PyObjC.
+    Thread-safe: can be called from any thread.
     """
-    
+
     def __init__(self, duration: float = 2.0, position: str = "top-center"):
-        """
-        Initialize the overlay.
-        
-        Args:
-            duration: How long the overlay stays visible (seconds)
-            position: Screen position (top-center, top-right, bottom-center, etc.)
-        """
         self.duration = duration
         self.position = position
         self._window = None
         self._text_field = None
         self._hide_timer = None
         self._initialized = False
-        self._init_failed = False  # Track if init already failed
-        self._last_message = ""  # Prevent duplicate messages
-        
-    def _init_window(self):
-        """Initialize the native window (lazy loading)"""
-        if self._initialized or self._init_failed:
-            return
-            
+        self._lock = threading.Lock()
+
+    def _ensure_initialized(self):
+        """Initialize window on first use (must be called from main thread)"""
+        if self._initialized:
+            return True
+
         try:
             from AppKit import (
                 NSWindow, NSWindowStyleMaskBorderless, NSBackingStoreBuffered,
                 NSFloatingWindowLevel, NSTextField, NSColor, NSFont,
                 NSScreen, NSMakeRect, NSTextAlignmentCenter, NSView,
-                NSApplication
+                NSApplication, NSVisualEffectView, NSVisualEffectBlendingModeBehindWindow,
+                NSVisualEffectMaterialHUDWindow, NSVisualEffectStateActive
             )
-            # Note: kCGWindowLevelFloating moved/renamed in newer PyObjC, using NSFloatingWindowLevel instead
-            
+            # Note: kCGWindowLevelFloating is not needed - using NSFloatingWindowLevel instead
+
             # Get screen dimensions
             screen = NSScreen.mainScreen()
+            if not screen:
+                return False
             screen_frame = screen.frame()
             screen_width = screen_frame.size.width
             screen_height = screen_frame.size.height
-            
+
             # Window dimensions
-            window_width = 500
-            window_height = 60
-            
+            window_width = 400
+            window_height = 50
+
             # Calculate position
             if "center" in self.position:
                 x = (screen_width - window_width) / 2
@@ -62,15 +58,15 @@ class Overlay:
                 x = screen_width - window_width - 20
             else:
                 x = 20
-            
+
             if "top" in self.position:
-                y = screen_height - window_height - 80  # Below menubar
+                y = screen_height - window_height - 100  # Below menubar
             elif "bottom" in self.position:
                 y = 100
             else:
                 y = screen_height / 2
-            
-            # Create window
+
+            # Create borderless window
             rect = NSMakeRect(x, y, window_width, window_height)
             self._window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
                 rect,
@@ -78,23 +74,38 @@ class Overlay:
                 NSBackingStoreBuffered,
                 False
             )
-            
+
             # Configure window
-            self._window.setLevel_(NSFloatingWindowLevel)
+            self._window.setLevel_(NSFloatingWindowLevel + 1)  # Above other floating windows
             self._window.setOpaque_(False)
             self._window.setBackgroundColor_(NSColor.clearColor())
             self._window.setIgnoresMouseEvents_(True)
             self._window.setCollectionBehavior_(1 << 0)  # Can join all spaces
-            
-            # Create content view with rounded background
-            content_view = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, window_width, window_height))
-            content_view.setWantsLayer_(True)
-            content_view.layer().setBackgroundColor_(NSColor.colorWithWhite_alpha_(0.1, 0.9).CGColor())
-            content_view.layer().setCornerRadius_(12)
-            
+            self._window.setHasShadow_(True)
+
+            # Create visual effect view for blur background (dark style)
+            effect_view = NSVisualEffectView.alloc().initWithFrame_(
+                NSMakeRect(0, 0, window_width, window_height)
+            )
+            # Use dark material for consistent appearance
+            effect_view.setMaterial_(NSVisualEffectMaterialHUDWindow)
+            effect_view.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow)
+            effect_view.setState_(NSVisualEffectStateActive)
+            # Force dark appearance for consistent white text
+            from AppKit import NSAppearance
+            dark_appearance = NSAppearance.appearanceNamed_("NSAppearanceNameVibrantDark")
+            if dark_appearance:
+                effect_view.setAppearance_(dark_appearance)
+            effect_view.setWantsLayer_(True)
+            effect_view.layer().setCornerRadius_(12)
+            effect_view.layer().setMasksToBounds_(True)
+            # Add subtle border
+            effect_view.layer().setBorderWidth_(0.5)
+            effect_view.layer().setBorderColor_(NSColor.grayColor().CGColor())
+
             # Create text field
             self._text_field = NSTextField.alloc().initWithFrame_(
-                NSMakeRect(20, 10, window_width - 40, window_height - 20)
+                NSMakeRect(15, 10, window_width - 30, window_height - 20)
             )
             self._text_field.setStringValue_("")
             self._text_field.setBezeled_(False)
@@ -103,86 +114,148 @@ class Overlay:
             self._text_field.setSelectable_(False)
             self._text_field.setAlignment_(NSTextAlignmentCenter)
             self._text_field.setTextColor_(NSColor.whiteColor())
-            self._text_field.setFont_(NSFont.systemFontOfSize_weight_(18, 0.3))
-            
-            content_view.addSubview_(self._text_field)
-            self._window.setContentView_(content_view)
-            
+            self._text_field.setFont_(NSFont.systemFontOfSize_weight_(16, 0.5))  # Slightly bolder
+
+            effect_view.addSubview_(self._text_field)
+            self._window.setContentView_(effect_view)
+
             self._initialized = True
-            
-        except ImportError as e:
-            print(f"[Sotto] Overlay unavailable (using terminal output): {e}")
-            self._initialized = False
-            self._init_failed = True
+            return True
+
         except Exception as e:
-            print(f"[Sotto] Overlay error (using terminal output): {e}")
-            self._initialized = False
-            self._init_failed = True
-    
-    def show(self, text: str, icon: str = ""):
-        """
-        Show the overlay with text.
-        
-        Args:
-            text: Text to display
-            icon: Optional emoji icon to prepend
-        """
-        if not self._initialized:
-            self._init_window()
-        
-        if not self._initialized or not self._window:
-            # Fallback: print to console (avoid duplicates)
-            display_text = f"{icon} {text}" if icon else text
-            if display_text != self._last_message:
-                print(f"[Sotto] {display_text}")
-                self._last_message = display_text
+            print(f"[Sotto] HUD init error: {e}")
+            return False
+
+    def _show_on_main_thread(self, text: str):
+        """Actually show the window (called on main thread)"""
+        if not self._ensure_initialized():
+            print(f"[Sotto] {text}")
             return
-        
+
         try:
-            # Cancel any pending hide timer
+            # Cancel pending hide timer
             if self._hide_timer:
                 self._hide_timer.cancel()
-            
-            # Update text
-            display_text = f"{icon} {text}" if icon else text
-            self._text_field.setStringValue_(display_text)
-            
-            # Show window
-            self._window.orderFront_(None)
-            
-            # Set timer to hide
-            self._hide_timer = threading.Timer(self.duration, self.hide)
+                self._hide_timer = None
+
+            # Update text and show
+            self._text_field.setStringValue_(text)
+            self._window.orderFrontRegardless()
+
+            # Schedule hide
+            self._hide_timer = threading.Timer(self.duration, self._hide_on_main_thread)
+            self._hide_timer.daemon = True
             self._hide_timer.start()
-            
+
         except Exception as e:
-            print(f"Error showing overlay: {e}")
-    
+            print(f"[Sotto] {text}")
+
+    def _hide_on_main_thread(self):
+        """Hide the window"""
+        try:
+            if self._window:
+                # Dispatch to main thread
+                from Foundation import NSObject
+                from PyObjCTools import AppHelper
+                AppHelper.callAfter(lambda: self._window.orderOut_(None))
+        except:
+            pass
+
+    def show(self, text: str, icon: str = ""):
+        """
+        Show the overlay with text (thread-safe).
+        Can be called from any thread.
+        """
+        display_text = f"{icon} {text}".strip() if icon else text
+
+        try:
+            from PyObjCTools import AppHelper
+            # Dispatch to main thread
+            AppHelper.callAfter(lambda: self._show_on_main_thread(display_text))
+        except ImportError:
+            # Fallback to print
+            print(f"[Sotto] {display_text}")
+        except Exception as e:
+            print(f"[Sotto] {display_text}")
+
     def hide(self):
-        """Hide the overlay"""
-        if self._window:
-            try:
-                self._window.orderOut_(None)
-            except:
-                pass
-    
+        """Hide the overlay (thread-safe)"""
+        try:
+            from PyObjCTools import AppHelper
+            AppHelper.callAfter(self._hide_on_main_thread)
+        except:
+            pass
+
     def show_listening(self):
-        """Show listening indicator"""
         self.show("Listening...", "🎤")
-    
+
     def show_transcription(self, text: str):
-        """Show transcription result"""
         self.show(text, "📝")
-    
+
     def show_command(self, command: str):
-        """Show command execution"""
-        self.show(f"Command: {command}", "⚡")
-    
+        self.show(f"{command}", "⚡")
+
     def show_error(self, error: str):
-        """Show error message"""
-        self.show(f"Error: {error}", "❌")
-    
+        self.show(f"{error}", "❌")
+
     def show_success(self, message: str):
-        """Show success message"""
+        self.show(message, "✅")
+
+
+class NotificationOverlay:
+    """
+    Fallback overlay using macOS notifications via osascript.
+    Works reliably from any thread but is rate-limited and intrusive.
+    """
+
+    def __init__(self, duration: float = 2.0, position: str = "top-center"):
+        self.duration = duration
+        self._last_message = ""
+        self._last_time = 0
+        self._min_interval = 0.5
+
+    def _notify(self, title: str, message: str):
+        """Send a macOS notification via osascript"""
+        import subprocess
+        import time as t
+
+        now = t.time()
+        if now - self._last_time < self._min_interval:
+            return
+        self._last_time = now
+
+        message = message.replace('"', '\\"')
+        title = title.replace('"', '\\"')
+
+        script = f'display notification "{message}" with title "{title}"'
+        try:
+            subprocess.run(["osascript", "-e", script], capture_output=True, timeout=2)
+        except Exception:
+            pass
+
+    def show(self, text: str, icon: str = ""):
+        display_text = f"{icon} {text}" if icon else text
+        if display_text != self._last_message:
+            self._last_message = display_text
+            self._notify("Sotto", display_text)
+            print(f"[Sotto] {display_text}")
+
+    def hide(self):
+        pass
+
+    def show_listening(self):
+        self.show("Listening...", "🎤")
+
+    def show_transcription(self, text: str):
+        self.show(text, "📝")
+
+    def show_command(self, command: str):
+        self.show(f"Command: {command}", "⚡")
+
+    def show_error(self, error: str):
+        self.show(f"Error: {error}", "❌")
+
+    def show_success(self, message: str):
         self.show(message, "✅")
 
 
@@ -222,14 +295,28 @@ class SimpleOverlay:
         self.show(message, "✅")
 
 
-def create_overlay(duration: float = 2.0, position: str = "top-center") -> Overlay:
+def create_overlay(duration: float = 2.0, position: str = "top-center"):
     """
     Create an overlay instance.
-    Falls back to SimpleOverlay if PyObjC is not available.
+    Priority: HUDOverlay (native HUD) > NotificationOverlay > SimpleOverlay
     """
-    try:
-        import AppKit
-        return Overlay(duration, position)
-    except ImportError:
-        print("[Sotto] PyObjC not available, using simple terminal overlay")
-        return SimpleOverlay(duration, position)
+    import sys
+
+    if sys.platform == "darwin":
+        # Try native HUD overlay first (best UX)
+        try:
+            from AppKit import NSApplication
+            # Check if we have an app running (GUI mode)
+            app = NSApplication.sharedApplication()
+            if app is not None:
+                return HUDOverlay(duration, position)
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        # Fall back to notifications
+        return NotificationOverlay(duration, position)
+
+    # Non-macOS: terminal output
+    return SimpleOverlay(duration, position)

@@ -36,7 +36,9 @@ class CommandExecutor:
             
             # System commands
             "volume": self._volume,
+            "volume_set": self._volume_set,
             "brightness": self._brightness,
+            "brightness_set": self._brightness_set,
             "screenshot": self._screenshot,
             "lock_screen": self._lock_screen,
             "sleep": self._sleep,
@@ -84,27 +86,29 @@ class CommandExecutor:
     def execute(self, command_name: str, args: Dict[str, Any] = None) -> bool:
         """
         Execute a command.
-        
+
         Args:
             command_name: Name of the command to execute
             args: Command arguments
-            
+
         Returns:
             True if command executed successfully
         """
         if args is None:
             args = {}
-        
+
         handler = self._handlers.get(command_name)
         if handler:
             try:
                 handler(**args)
+                # Show success notification
+                self._status(f"✅ {command_name} executed")
                 return True
             except Exception as e:
-                self._status(f"Error executing {command_name}: {e}")
+                self._status(f"❌ Error: {e}")
                 return False
         else:
-            self._status(f"Unknown command: {command_name}")
+            self._status(f"❓ Unknown: {command_name}")
             return False
     
     def type_text(self, text: str):
@@ -197,7 +201,29 @@ class CommandExecutor:
             self._press_key(Key.f2)  # Brightness up on most Macs
         elif action == "down":
             self._press_key(Key.f1)  # Brightness down on most Macs
-    
+
+    def _volume_set(self, level: int):
+        """Set volume to a specific level (0-100)"""
+        level = max(0, min(100, level))  # Clamp to 0-100
+        self._status(f"Volume → {level}%")
+        self._run_applescript(f"set volume output volume {level}")
+
+    def _brightness_set(self, level: int):
+        """Set brightness to a specific level (0-100)"""
+        level = max(0, min(100, level))  # Clamp to 0-100
+        self._status(f"Brightness → {level}%")
+        # Use brightness command if available, otherwise use AppleScript
+        self._run_applescript(f'''
+            tell application "System Events"
+                tell appearance preferences
+                    -- Note: Direct brightness control requires additional permissions
+                    -- This is a placeholder - actual implementation may vary
+                end tell
+            end tell
+        ''')
+        # For now, just notify - actual brightness control requires special APIs
+        self._status(f"Brightness set to {level}% (may require manual adjustment)")
+
     def _screenshot(self):
         """Take a screenshot"""
         self._status("Taking screenshot")

@@ -9,6 +9,12 @@ from typing import Optional, Callable
 from threading import Thread, Event
 from queue import Queue
 import time
+import os
+
+def _debug_print(*args, **kwargs):
+    """Print only if debug mode is enabled (checks env var dynamically)"""
+    if os.environ.get('SOTTO_DEBUG', '').lower() in ('1', 'true', 'yes'):
+        print(*args, **kwargs)
 
 
 class AudioEngine:
@@ -34,7 +40,7 @@ class AudioEngine:
     def _audio_callback(self, indata, frames, time_info, status):
         """Callback for sounddevice stream"""
         if status:
-            print(f"Audio status: {status}")
+            _debug_print(f"Audio status: {status}")
         
         # Copy audio data to avoid issues with buffer reuse
         audio_chunk = indata.copy().flatten()
@@ -47,9 +53,7 @@ class AudioEngine:
     
     def start_recording(self, on_audio: Optional[Callable] = None):
         """Start recording from microphone"""
-        print(f"[Audio] Starting recording...")
         if self._is_recording:
-            print("[Audio] Already recording!")
             return
         
         self._is_recording = True
@@ -67,7 +71,6 @@ class AudioEngine:
     
     def _record_loop(self):
         """Main recording loop"""
-        print("[Audio] Starting input stream...")
         try:
             with sd.InputStream(
                 samplerate=self.SAMPLE_RATE,
@@ -79,13 +82,12 @@ class AudioEngine:
                 while not self._stop_event.is_set():
                     time.sleep(0.01)  # Small sleep to prevent busy waiting
         except Exception as e:
-            print(f"Audio recording error: {e}")
+            _debug_print(f"Audio recording error: {e}")
         finally:
             self._is_recording = False
     
     def stop_recording(self) -> np.ndarray:
         """Stop recording and return captured audio"""
-        print(f"[Audio] Stopping... buffer has {len(self._audio_buffer)} chunks")
         self._stop_event.set()
         
         if self._record_thread:
