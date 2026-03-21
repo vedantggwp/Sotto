@@ -11,13 +11,13 @@ __author__ = "Ved"
 __description__ = "Voice control and dictation for macOS with near-zero latency"
 
 from .config import SottoConfig, get_config
-from .core import AudioEngine, Transcriber, CommandParser, CommandExecutor
+from .core import AudioEngine, CommandExecutor, CommandParser, Transcriber
 
 __all__ = [
-    'SottoConfig',
-    'get_config',
-    'AudioEngine',
-    'Transcriber',
-    'CommandParser',
-    'CommandExecutor',
+    "SottoConfig",
+    "get_config",
+    "AudioEngine",
+    "Transcriber",
+    "CommandParser",
+    "CommandExecutor",
 ]

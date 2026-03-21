@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicklasxyz/tauri-v2-schema/refs/heads/main/tauri.conf.json",
+  "productName": "Sotto",
+  "version": "0.1.0",
+  "identifier": "com.sotto.voice",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "withGlobalTauri": true,
+    "trayIcon": {
+      "id": "sotto-tray",
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true,
+      "tooltip": "Sotto"
+    },
+    "windows": [
+      {
+        "label": "pill",
+        "title": "Sotto",
+        "url": "/pill.html",
+        "width": 220,
+        "height": 80,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "x": 640,
+        "y": 900
+      },
+      {
+        "label": "settings",
+        "title": "Sotto Settings",
+        "url": "/settings.html",
+        "width": 640,
+        "height": 480,
+        "minWidth": 520,
+        "minHeight": 380,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "visible": false,
+        "skipTaskbar": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0"
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}

@@ -29,7 +29,10 @@ hiddenimports = [
     'sotto.ui',
     'sotto.ui.overlay',
     'sotto.ui.menubar',
+    'sotto.ui.menubar',
     'sotto.ui.settings',
+    'sotto.ui.commands_window',
+    'sotto.ui.notch',
     # macOS specific
     'pynput.keyboard._darwin',
     'pynput.mouse._darwin',
