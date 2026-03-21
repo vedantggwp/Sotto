@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sotto Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1200px;
+    height: 720px;
+    background: #1a1714;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* macOS-style desktop — warm charcoal */
+  .desktop {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1714 0%, #2a2520 50%, #1e1b17 100%);
+    position: relative;
+  }
+
+  /* Menubar */
+  .menubar {
+    height: 28px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(30px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+    position: relative;
+    z-index: 10;
+  }
+
+  .menubar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .apple-logo {
+    font-size: 15px;
+    opacity: 0.9;
+  }
+
+  .menubar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+  }
+
+  .menubar-icon {
+    opacity: 0.8;
+    font-size: 14px;
+  }
+
+  /* Sotto menubar icon */
+  .sotto-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+
+  .sotto-icon.active {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  }
+
+  /* Notch area */
+  .notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    height: 28px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+    z-index: 20;
+  }
+
+  /* Dynamic Island overlay */
+  .dynamic-island {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    border-radius: 22px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.55s cubic-bezier(0.3, 1.35, 0.3, 1.0);
+
+    /* Start as notch */
+    width: 220px;
+    height: 28px;
+    opacity: 0;
+  }
+
+  .dynamic-island.compact {
+    width: 240px;
+    height: 36px;
+    top: 4px;
+    border-radius: 20px;
+    opacity: 1;
+  }
+
+  .dynamic-island.expanded {
+    width: 420px;
+    height: 72px;
+    top: 4px;
+    border-radius: 28px;
+    opacity: 1;
+  }
+
+  .island-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .island-content.visible {
+    opacity: 1;
+  }
+
+  /* Waveform bars */
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 24px;
+  }
+
+  .waveform-bar {
+    width: 3px;
+    background: #f59e0b;
+    border-radius: 2px;
+    transition: height 0.1s ease;
+  }
+
+  @keyframes wave1 { 0%,100% { height: 6px; } 50% { height: 20px; } }
+  @keyframes wave2 { 0%,100% { height: 10px; } 50% { height: 16px; } }
+  @keyframes wave3 { 0%,100% { height: 14px; } 50% { height: 8px; } }
+  @keyframes wave4 { 0%,100% { height: 8px; } 50% { height: 22px; } }
+  @keyframes wave5 { 0%,100% { height: 12px; } 50% { height: 6px; } }
+
+  .waveform-bar:nth-child(1) { animation: wave1 0.6s ease-in-out infinite; }
+  .waveform-bar:nth-child(2) { animation: wave2 0.5s ease-in-out infinite 0.1s; }
+  .waveform-bar:nth-child(3) { animation: wave3 0.7s ease-in-out infinite 0.05s; }
+  .waveform-bar:nth-child(4) { animation: wave4 0.4s ease-in-out infinite 0.15s; }
+  .waveform-bar:nth-child(5) { animation: wave5 0.55s ease-in-out infinite 0.08s; }
+  .waveform-bar:nth-child(6) { animation: wave1 0.65s ease-in-out infinite 0.12s; }
+  .waveform-bar:nth-child(7) { animation: wave3 0.5s ease-in-out infinite 0.2s; }
+
+  .waveform.paused .waveform-bar {
+    animation: none !important;
+    height: 4px !important;
+  }
+
+  /* Status indicator */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.3); }
+  }
+
+  .status-dot.recording {
+    background: #dc6843;
+    animation: pulse-dot 1s ease-in-out infinite;
+  }
+
+  /* Check mark */
+  .checkmark {
+    color: #22c55e;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  /* Fake text editor window */
+  .editor-window {
+    position: absolute;
+    top: 80px;
+    left: 60px;
+    right: 60px;
+    bottom: 60px;
+    background: rgba(28, 25, 22, 0.95);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .editor-titlebar {
+    height: 36px;
+    background: rgba(38, 34, 30, 0.9);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .traffic-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .tl-close { background: #ff5f57; }
+  .tl-min { background: #febc2e; }
+  .tl-max { background: #28c840; }
+
+  .editor-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    margin-left: 60px;
+  }
+
+  .editor-body {
+    padding: 20px 24px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .editor-line {
+    opacity: 0.4;
+  }
+
+  /* Typed text - appears during dictation demo */
+  .typed-text {
+    color: rgba(255, 255, 255, 0.95);
+    opacity: 0;
+    display: inline;
+  }
+
+  .typed-text.visible {
+    opacity: 1;
+  }
+
+  .cursor-blink {
+    display: inline-block;
+    width: 2px;
+    height: 16px;
+    background: #f59e0b;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Hotkey indicator */
+  .hotkey-indicator {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 40;
+  }
+
+  .hotkey-indicator.visible {
+    opacity: 1;
+  }
+
+  .key {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+  }
+
+  .key.pressed {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  }
+
+  .key-plus {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 12px;
+  }
+
+  /* Scene label */
+  .scene-label {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 40;
+  }
+
+  .scene-label.visible {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div class="desktop">
+  <!-- Menubar -->
+  <div class="menubar">
+    <div class="menubar-left">
+      <span class="apple-logo"></span>
+      <span>Notes</span>
+      <span style="opacity:0.6">File</span>
+      <span style="opacity:0.6">Edit</span>
+      <span style="opacity:0.6">View</span>
+    </div>
+    <div class="menubar-right">
+      <span class="menubar-icon">🔋</span>
+      <span class="menubar-icon">📶</span>
+      <div class="sotto-icon" id="sottoIcon">S</div>
+      <span id="menuTime">3:42 PM</span>
+    </div>
+  </div>
+
+  <!-- Notch -->
+  <div class="notch"></div>
+
+  <!-- Dynamic Island -->
+  <div class="dynamic-island" id="island">
+    <div class="island-content" id="islandContent">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="waveform paused" id="waveform">
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+        <div class="waveform-bar"></div>
+      </div>
+      <span id="islandText">Listening...</span>
+    </div>
+  </div>
+
+  <!-- Editor window -->
+  <div class="editor-window">
+    <div class="editor-titlebar">
+      <div class="traffic-light tl-close"></div>
+      <div class="traffic-light tl-min"></div>
+      <div class="traffic-light tl-max"></div>
+      <span class="editor-title">meeting-notes.md</span>
+    </div>
+    <div class="editor-body">
+      <div class="editor-line">## Team Standup - March 21</div>
+      <div class="editor-line">&nbsp;</div>
+      <div class="editor-line">### Updates</div>
+      <div class="editor-line">- API migration completed ahead of schedule</div>
+      <div class="editor-line">- Performance benchmarks look promising</div>
+      <div class="editor-line">&nbsp;</div>
+      <div class="editor-line">### Action Items</div>
+      <div class="editor-line" id="typingLine">- <span class="typed-text" id="typedText"></span><span class="cursor-blink" id="cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- Hotkey indicator -->
+  <div class="hotkey-indicator" id="hotkeyIndicator">
+    <span class="key" id="keyCmd">&#8984; Cmd</span>
+    <span class="key-plus">+</span>
+    <span class="key" id="keyShift">&#8679; Shift</span>
+    <span class="key-plus">+</span>
+    <span class="key" id="keySpace">Space</span>
+  </div>
+
+  <!-- Scene label -->
+  <div class="scene-label" id="sceneLabel"></div>
+</div>
+
+<script>
+  const island = document.getElementById('island');
+  const islandContent = document.getElementById('islandContent');
+  const islandText = document.getElementById('islandText');
+  const statusDot = document.getElementById('statusDot');
+  const waveform = document.getElementById('waveform');
+  const sottoIcon = document.getElementById('sottoIcon');
+  const hotkeyIndicator = document.getElementById('hotkeyIndicator');
+  const typedText = document.getElementById('typedText');
+  const cursor = document.getElementById('cursor');
+  const sceneLabel = document.getElementById('sceneLabel');
+  const keyCmd = document.getElementById('keyCmd');
+  const keyShift = document.getElementById('keyShift');
+  const keySpace = document.getElementById('keySpace');
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function showLabel(text) {
+    sceneLabel.textContent = text;
+    sceneLabel.classList.add('visible');
+  }
+
+  function hideLabel() {
+    sceneLabel.classList.remove('visible');
+  }
+
+  async function typeText(text, speed = 45) {
+    for (let i = 0; i < text.length; i++) {
+      typedText.textContent += text[i];
+      typedText.classList.add('visible');
+      await sleep(speed);
+    }
+  }
+
+  async function runDemo() {
+    // Wait a beat
+    await sleep(800);
+
+    // Scene 1: Show hotkey
+    showLabel('Hold hotkey to record');
+    hotkeyIndicator.classList.add('visible');
+    await sleep(600);
+
+    // Press keys
+    keyCmd.classList.add('pressed');
+    await sleep(100);
+    keyShift.classList.add('pressed');
+    await sleep(100);
+    keySpace.classList.add('pressed');
+    await sleep(300);
+
+    // Scene 2: Island appears - Listening
+    hideLabel();
+    sottoIcon.classList.add('active');
+    island.classList.add('compact');
+    await sleep(300);
+    island.classList.remove('compact');
+    island.classList.add('expanded');
+    statusDot.classList.add('recording');
+    waveform.classList.remove('paused');
+    islandContent.classList.add('visible');
+    islandText.textContent = 'Listening...';
+    await sleep(200);
+    showLabel('Speak naturally');
+
+    // Simulate speaking for 2 seconds
+    await sleep(2000);
+
+    // Scene 3: Release keys
+    keyCmd.classList.remove('pressed');
+    keyShift.classList.remove('pressed');
+    keySpace.classList.remove('pressed');
+    hideLabel();
+
+    // Scene 4: Processing
+    waveform.classList.add('paused');
+    statusDot.classList.remove('recording');
+    islandText.textContent = 'Processing...';
+    await sleep(800);
+
+    // Scene 5: Show result
+    islandText.innerHTML = '<span class="checkmark">&#10003;</span>&nbsp; "Deploy the staging build tonight"';
+    showLabel('Text typed at cursor');
+    await sleep(400);
+
+    // Type the text in the editor
+    await typeText('Deploy the staging build tonight', 40);
+    await sleep(1200);
+
+    // Scene 6: Island shrinks and hides
+    hideLabel();
+    islandContent.classList.remove('visible');
+    await sleep(200);
+    island.classList.remove('expanded');
+    island.classList.add('compact');
+    await sleep(300);
+    island.classList.remove('compact');
+    sottoIcon.classList.remove('active');
+    hotkeyIndicator.classList.remove('visible');
+
+    await sleep(800);
+
+    // Scene 7: Second demo - voice command
+    showLabel('Voice commands work too');
+    await sleep(800);
+    hotkeyIndicator.classList.add('visible');
+    keyCmd.classList.add('pressed');
+    keyShift.classList.add('pressed');
+    keySpace.classList.add('pressed');
+    await sleep(300);
+
+    sottoIcon.classList.add('active');
+    island.classList.add('expanded');
+    statusDot.classList.add('recording');
+    waveform.classList.remove('paused');
+    islandContent.classList.add('visible');
+    islandText.textContent = 'Listening...';
+    hideLabel();
+    await sleep(1500);
+
+    // Release
+    keyCmd.classList.remove('pressed');
+    keyShift.classList.remove('pressed');
+    keySpace.classList.remove('pressed');
+
+    waveform.classList.add('paused');
+    statusDot.classList.remove('recording');
+    islandText.textContent = 'Processing...';
+    await sleep(600);
+
+    // Command result
+    islandText.innerHTML = '<span class="checkmark">&#10003;</span>&nbsp; open Safari';
+    showLabel('App opens instantly');
+    await sleep(2000);
+
+    // Hide everything
+    hideLabel();
+    islandContent.classList.remove('visible');
+    await sleep(200);
+    island.classList.remove('expanded');
+    await sleep(300);
+    sottoIcon.classList.remove('active');
+    hotkeyIndicator.classList.remove('visible');
+
+    await sleep(1500);
+
+    // Loop
+    typedText.textContent = '';
+    typedText.classList.remove('visible');
+    runDemo();
+  }
+
+  // Start after a brief pause
+  setTimeout(runDemo, 500);
+</script>
+</body>
+</html>

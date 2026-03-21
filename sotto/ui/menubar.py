@@ -3,9 +3,11 @@ Sotto Menubar Application
 Native macOS menubar interface using rumps.
 """
 
+from typing import Callable, Optional
+
 import rumps
-from typing import Optional, Callable
-from ..config import get_config, SottoConfig
+
+from ..config import get_config
 
 
 class SottoMenubar(rumps.App):
@@ -27,7 +29,7 @@ class SottoMenubar(rumps.App):
         on_toggle_listening: Optional[Callable] = None,
         on_mode_change: Optional[Callable[[str], None]] = None,
         on_model_change: Optional[Callable[[str], None]] = None,
-        on_quit: Optional[Callable] = None
+        on_quit: Optional[Callable] = None,
     ):
         """
         Initialize the menubar app.
@@ -49,29 +51,26 @@ class SottoMenubar(rumps.App):
         self._is_listening = False
 
         self._setup_menu()
-    
+
     def _setup_menu(self):
         """Setup the menu items"""
         # Status with hotkey info
-        hotkey = self.config.hotkeys.push_to_talk.replace("<", "").replace(">", "").replace("+", " + ")
+        hotkey = (
+            self.config.hotkeys.push_to_talk.replace("<", "").replace(">", "").replace("+", " + ")
+        )
         self.status_item = rumps.MenuItem(f"Ready ({hotkey})")
         self.status_item.set_callback(None)
 
         # Listening toggle
-        self.listen_item = rumps.MenuItem(
-            "Start Listening",
-            callback=self._toggle_listening
-        )
+        self.listen_item = rumps.MenuItem("Start Listening", callback=self._toggle_listening)
 
         # Mode selection
         self.mode_menu = rumps.MenuItem("Mode")
         self.push_to_talk_item = rumps.MenuItem(
-            "Push to Talk",
-            callback=lambda _: self._set_mode("push_to_talk")
+            "Push to Talk", callback=lambda _: self._set_mode("push_to_talk")
         )
         self.always_listening_item = rumps.MenuItem(
-            "Always Listening",
-            callback=lambda _: self._set_mode("always_listening")
+            "Always Listening", callback=lambda _: self._set_mode("always_listening")
         )
 
         # Mark current mode
@@ -113,9 +112,9 @@ class SottoMenubar(rumps.App):
             self.commands_item,
             self.settings_item,
             None,  # Separator
-            self.quit_item
+            self.quit_item,
         ]
-    
+
     def _toggle_listening(self, _):
         """Toggle listening state"""
         if self._on_toggle_listening:
@@ -150,12 +149,13 @@ class SottoMenubar(rumps.App):
         rumps.notification(
             title="Sotto",
             subtitle="Model Changed",
-            message=f"Switched to {model} (restart may be required)"
+            message=f"Switched to {model} (restart may be required)",
         )
 
     def _open_settings(self, _):
         """Open settings window"""
         from .settings import show_settings_window
+
         show_settings_window(self.config, on_save=self._on_settings_saved)
 
     def _on_settings_saved(self, config):
@@ -176,68 +176,23 @@ class SottoMenubar(rumps.App):
 
         if self._on_mode_change:
             self._on_mode_change(config.mode)
-    
+
     def _show_commands(self, _):
-        """Show available commands"""
-        # Comprehensive command list
-        commands_text = """Voice Commands:
+        """Show available commands (placeholder - commands window removed)"""
+        pass
 
-🔊 VOLUME & SYSTEM
-• "volume up" / "volume down"
-• "volume 50" or "set volume to 80"
-• "mute" / "unmute"
-• "brightness up" / "brightness down"
-• "screenshot"
-• "lock" or "lock screen"
-
-📱 APPS
-• "open [app name]" - Open an app
-• "quit [app name]" - Quit an app
-• "switch to [app name]" - Switch to app
-• "close window"
-
-✂️ TEXT EDITING
-• "select all" / "copy" / "cut" / "paste"
-• "undo" / "redo"
-• "delete that" - Delete last dictation
-• "delete word" / "delete line"
-• "new line" / "tab" / "backspace"
-
-🧭 NAVIGATION
-• "scroll up" / "scroll down"
-• "page up" / "page down"
-• "back" / "forward"
-• "new tab" / "close tab"
-• "next tab" / "previous tab"
-
-🔍 SEARCH
-• "search [query]" - Spotlight search
-• "google [query]" - Google search
-• "find [text]" - Find in app
-
-⏸️ CONTROL
-• "stop" - Stop listening
-
-💡 TIP: Speak clearly after pressing hotkey"""
-
-        rumps.alert(
-            title="Sotto Voice Commands",
-            message=commands_text,
-            ok="Got it!"
-        )
-    
     def _quit(self, _):
         """Quit the application"""
         if self._on_quit:
             self._on_quit()
         rumps.quit_application()
-    
+
     # Public methods for updating state
-    
+
     def set_listening(self, is_listening: bool):
         """Update the listening state"""
         self._is_listening = is_listening
-        
+
         if is_listening:
             self.title = self.ICON_LISTENING
             self.status_item.title = "Status: Listening..."
@@ -246,20 +201,16 @@ class SottoMenubar(rumps.App):
             self.title = self.ICON_IDLE
             self.status_item.title = "Status: Idle"
             self.listen_item.title = "Start Listening"
-    
+
     def set_processing(self):
         """Show processing state"""
         self.title = self.ICON_PROCESSING
         self.status_item.title = "Status: Processing..."
-    
+
     def show_notification(self, title: str, message: str, subtitle: str = ""):
         """Show a notification"""
-        rumps.notification(
-            title=title,
-            subtitle=subtitle,
-            message=message
-        )
-    
+        rumps.notification(title=title, subtitle=subtitle, message=message)
+
     def update_status(self, status: str):
         """Update the status text"""
         self.status_item.title = f"Status: {status}"

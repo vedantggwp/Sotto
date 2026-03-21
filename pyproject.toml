@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sotto"
+version = "0.2.1"
+description = "Local voice control for macOS"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "sounddevice>=0.4.6",
+    "numpy>=1.24.0",
+    "faster-whisper>=1.0.0",
+    "pynput>=1.7.6",
+    "rumps>=0.4.0",
+    "pyobjc-core>=10.0",
+    "pyobjc-framework-Cocoa>=10.0",
+    "pyobjc-framework-Quartz>=10.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "simpleaudio>=1.0.4",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+sotto = "sotto.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+pythonpath = "."
+
+[tool.ruff]
+select = ["E", "F", "I"]
+ignore = []
+line-length = 100
+
+[tool.black]
+line-length = 100

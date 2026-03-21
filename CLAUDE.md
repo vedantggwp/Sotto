@@ -37,6 +37,14 @@ pip install -e ".[dev]"
 pip install pyinstaller
 pyinstaller Sotto.spec
 # Output: dist/Sotto.app
+
+# Run Tests
+pytest tests/
+
+# Run Linting
+ruff check .
+black --check .
+
 ```
 
 ## Architecture
@@ -65,8 +73,10 @@ pyinstaller Sotto.spec
 
 ### UI Layer
 
-- `ui/overlay.py`: Floating feedback window (tkinter preferred, PyObjC fallback, terminal last resort)
 - `ui/menubar.py`: System tray app using `rumps`
+- `ui/notch.py`: Dynamic Island-style HUD overlay (PyObjC, native NSWindow)
+- `ui/overlay.py`: Overlay factory — tries NotchOverlay, falls back to SimpleOverlay (terminal)
+- `ui/settings.py`: Native preferences window (PyObjC)
 
 ### Configuration
 

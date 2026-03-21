@@ -1,220 +1,194 @@
-# 🎙️ Sotto - Voice Control for macOS
+# Sotto
 
-> **v0.2.0-beta** - See [CHANGELOG.md](CHANGELOG.md) for what's new
+**Local voice control for macOS.** Push-to-talk dictation and 30+ system commands, powered by Whisper AI running entirely on-device.
 
-**Near-zero latency voice control and dictation for macOS using local Whisper AI.**
+No cloud. No latency. No data leaves your Mac.
 
-Sotto lets you control your Mac and type anywhere using your voice. All processing happens locally on your Mac - no cloud required, no data sent anywhere.
+<p align="center">
+  <img src="assets/demo.gif" alt="Sotto demo — hold hotkey, speak, text appears" width="700" />
+</p>
 
-## ✨ Features
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS-000000?style=flat-square&logo=apple" />
+  <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/whisper-faster--whisper-FF6F00?style=flat-square" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
+</p>
 
-- **🚀 Low Latency** - Local Whisper AI processing with Metal GPU acceleration
-- **🎤 Push-to-Talk** - Hold hotkey, speak, release to transcribe
-- **⚡ Smart Commands** - Say "open Safari", "volume up", "copy", etc.
-- **📝 Dictation** - Speak and text appears at your cursor
-- **🔒 Privacy First** - 100% local, no internet required
-- **🎨 macOS Native** - Menubar app with floating HUD overlay
+---
 
-## 🚀 Quick Start
+## How It Works
+
+Hold a hotkey. Speak. Release. Sotto transcribes your speech locally using [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2), classifies the intent with sub-millisecond regex parsing, and either types the text at your cursor or executes a system command.
+
+The entire pipeline runs in a single process with no network calls.
+
+```
+Microphone → Audio Engine (16kHz) → Whisper AI → Intent Parser → Executor
+                                                                    ↓
+                                                          Keyboard / AppleScript
+```
+
+## Features
+
+- **Push-to-talk and always-listening modes** with configurable hotkeys
+- **30+ voice commands**: app control, volume, brightness, clipboard, tabs, search
+- **Dictation**: speak naturally, text appears at your cursor
+- **Dynamic Island HUD**: native macOS overlay shows transcription feedback
+- **Menubar app**: lives in the system tray, no Dock icon
+- **Metal GPU acceleration** on Apple Silicon via CTranslate2
+- **Multiple Whisper models**: tiny, base, small, medium, large-v3
+
+## Quick Start
 
 ```bash
-# Clone and setup
-git clone https://github.com/YOUR_USERNAME/Sotto.git
+git clone https://github.com/vedantggwp/Sotto.git
 cd Sotto
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 
-# Run with GUI (menubar app)
-python -m sotto.main
+# Menubar app
+sotto
 
-# Or run in CLI mode
-python -m sotto.main --cli
+# CLI mode
+sotto --cli
 ```
 
-**Default hotkey:** Hold `Cmd+Shift+Space` and speak, release to transcribe.
+**Default hotkey:** `Cmd+Shift+Space` (hold to record, release to transcribe)
 
-### Required Permissions
-- **Accessibility**: System Settings → Privacy & Security → Accessibility (for hotkeys)
-- **Microphone**: System Settings → Privacy & Security → Microphone (for audio)
+### macOS Permissions
 
-## 📁 Project Structure
+Sotto requires two permissions in **System Settings > Privacy & Security**:
+
+| Permission | Why |
+|-----------|-----|
+| Accessibility | Global hotkey capture + keyboard simulation |
+| Microphone | Audio recording |
+
+## Architecture
 
 ```
-Sotto/
-├── sotto/                    # Main package
-│   ├── __init__.py          # Package exports
-│   ├── main.py              # Main application entry point
-│   ├── config.py            # Configuration management
-│   │
-│   ├── core/                # Core functionality
-│   │   ├── audio.py         # Microphone capture (sounddevice)
-│   │   ├── transcriber.py   # Whisper speech-to-text
-│   │   ├── command_parser.py# Intent detection & parsing  
-│   │   └── executor.py      # Command execution (keyboard, AppleScript)
-│   │
-│   ├── commands/            # Command definitions
-│   │   └── registry.py      # Voice command registry
-│   │
-│   └── ui/                  # User interface
-│       ├── menubar.py       # macOS menubar app (rumps)
-│       └── overlay.py       # Floating feedback window
+sotto/
+├── main.py                  # Application coordinator + state machine
+├── config.py                # Pydantic config + YAML persistence (~/.sotto/)
 │
-├── scripts/
-│   ├── download_model.py    # Download Whisper models
-│   └── install.sh           # Setup script
+├── core/
+│   ├── audio.py             # Threaded mic capture (sounddevice, 16kHz/512 blocks)
+│   ├── transcriber.py       # faster-whisper with lazy model loading
+│   ├── command_parser.py    # Compiled regex intent classifier
+│   ├── executor.py          # pynput keyboard sim + AppleScript system control
+│   └── hotkeys.py           # Global hotkey listener (PTT + toggle modes)
 │
-├── requirements.txt         # Python dependencies
-├── setup.py                # Package setup
-└── README.md               # This file
+├── ui/
+│   ├── menubar.py           # rumps menubar integration
+│   ├── notch.py             # Dynamic Island-style HUD overlay (PyObjC)
+│   ├── overlay.py           # Overlay factory with terminal fallback
+│   └── settings.py          # Native preferences window (PyObjC)
+│
+└── utils/
+    ├── logging.py           # Rotating file logger
+    └── permissions.py       # macOS permission checks
 ```
 
-## 📦 Components Explained
+### Design Decisions
 
-### `main.py` - Application Core
-The heart of Sotto. Coordinates all components:
-- Initializes audio, transcriber, parser, executor
-- Manages global hotkey listeners (pynput)
-- Handles push-to-talk and always-listening modes
-- Routes transcriptions to commands or dictation
+| Decision | Rationale |
+|----------|-----------|
+| `faster-whisper` over `openai-whisper` | 4x faster inference, lower memory, CTranslate2 backend |
+| Regex parsing over ML classifier | Sub-millisecond, deterministic, no model loading overhead |
+| `pynput` for keyboard simulation | Cross-app text injection without clipboard pollution |
+| `rumps` for menubar | Native NSStatusItem with minimal code |
+| PyObjC for HUD overlay | Real `NSWindow` with continuous corner curves, spring animations |
+| Single process, no server | Menubar utilities don't need HTTP/WebSocket infrastructure |
 
-### `core/audio.py` - Audio Engine
-Low-latency microphone capture:
-- Uses `sounddevice` for real-time audio capture
-- 16kHz sample rate (Whisper's preferred format)
-- Threaded recording with callback-based capture
-- Voice Activity Detection (VAD) for silence detection
-
-### `core/transcriber.py` - Speech Recognition
-Whisper-powered transcription:
-- Uses `faster-whisper` (CTranslate2) for speed
-- Supports multiple models: tiny, base, small, medium
-- Metal GPU acceleration on Apple Silicon
-- Returns text with confidence score
-
-### `core/command_parser.py` - Intent Detection
-Smart command vs dictation detection:
-- Pattern matching for voice commands
-- Command prefix detection ("open", "close", "volume", etc.)
-- Falls back to dictation for regular speech
-- Returns structured intent with parsed arguments
-
-### `core/executor.py` - Command Execution
-Executes parsed commands:
-- Keyboard simulation via `pynput`
-- System control via AppleScript
-- Text typing for dictation
-- Supports 30+ built-in commands
-
-### `ui/overlay.py` - Visual Feedback
-Floating feedback window:
-- Shows "Listening...", "Processing...", results
-- Native macOS window (PyObjC)
-- Falls back to terminal output if unavailable
-
-### `ui/menubar.py` - Menu Bar App
-System tray integration:
-- Quick access to start/stop listening
-- Mode switching (push-to-talk / always listening)
-- Status indicator
-
-### `config.py` - Configuration
-User settings management:
-- Hotkey configuration
-- Model selection
-- Feedback preferences
-- Stored in `~/.sotto/config.yaml`
-
-## 🎤 Voice Commands
+## Voice Commands
 
 ### App Control
-- "open Safari" / "open Notes" / "open [app]"
-- "close window" / "quit Safari"
-- "switch to Finder"
+```
+"open Safari"          "quit Slack"           "switch to Finder"
+```
 
 ### System
-- "volume up" / "volume down" / "mute" / "unmute"
-- "volume 50" / "set volume to 80" (percentage)
-- "brightness up" / "brightness down"
-- "screenshot"
-- "lock screen"
+```
+"volume up/down"       "mute" / "unmute"      "volume 50"
+"brightness up/down"   "screenshot"           "lock screen"
+```
 
 ### Text Editing
-- "copy" / "paste" / "cut"
-- "undo" / "redo"
-- "select all"
-- "delete that" (deletes last dictation)
-- "new line" / "new paragraph"
+```
+"copy" / "paste" / "cut"    "undo" / "redo"       "select all"
+"delete that"               "new line"            "new paragraph"
+```
 
 ### Navigation
-- "scroll up" / "scroll down"
-- "go back" / "go forward"
-- "new tab" / "close tab"
+```
+"scroll up/down"       "go back/forward"      "new tab" / "close tab"
+```
 
 ### Search
-- "search [query]" - Spotlight search
-- "google [query]" - Google search
+```
+"search [query]"       → Spotlight
+"google [query]"       → Default browser
+```
 
-## ⚙️ Configuration
+## Configuration
 
-Config file: `~/.sotto/config.yaml`
+Config: `~/.sotto/config.yaml` | Logs: `~/.sotto/logs/sotto.log`
 
 ```yaml
-mode: push_to_talk  # or always_listening
+mode: push_to_talk
 
 hotkeys:
   push_to_talk: "<cmd>+<shift>+<space>"
   toggle_listening: "<cmd>+<shift>+l"
 
 transcription:
-  model: small.en   # tiny.en, base.en, small.en, medium.en, large-v3
+  model: small.en
   language: en
-  device: auto      # auto, cpu, cuda
+  device: auto
 
 feedback:
   overlay_enabled: true
   sound_enabled: true
 ```
 
-## 🔧 Troubleshooting
+## Development
 
-### Hotkey not working
-- Grant Terminal/VS Code **Accessibility** permission
-- System Preferences → Privacy & Security → Accessibility
-
-### Microphone not recording
-- Grant Terminal **Microphone** permission  
-- System Preferences → Privacy & Security → Microphone
-
-### Low transcription quality
-- Use a better model: `python -m sotto.main --cli --model small.en`
-- Speak clearly and not too fast
-- Reduce background noise
-
-## 🛠️ Development
-
-### Run in debug mode
 ```bash
-python -m sotto.main --cli
+source venv/bin/activate
+sotto --cli --debug          # CLI with debug output
+sotto --model small.en       # Specific model
+pytest tests/                # Run tests
+ruff check .                 # Lint
 ```
 
-### Run with menubar
-```bash
-python -m sotto.main
-```
+### Adding Commands
 
-### Download a different model
-```bash
-python scripts/download_model.py small.en
-```
+1. Add a regex pattern to `COMMAND_PATTERNS` in `core/command_parser.py`
+2. Add a handler method to `CommandExecutor._handlers` in `core/executor.py`
 
-## 📄 License
+## Tech Stack
 
-MIT License - Feel free to use and modify.
+| Component | Library |
+|-----------|---------|
+| Speech-to-text | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) |
+| Audio capture | [sounddevice](https://github.com/spatialaudio/python-sounddevice) (PortAudio) |
+| Keyboard control | [pynput](https://github.com/moses-palmer/pynput) |
+| Menubar | [rumps](https://github.com/jaredks/rumps) |
+| Native UI | [PyObjC](https://github.com/ronaldoussoren/pyobjc) |
+| Config | [Pydantic](https://github.com/pydantic/pydantic) + YAML |
 
-## 🙏 Credits
+## Troubleshooting
 
-- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition
-- [faster-whisper](https://github.com/guillaumekln/faster-whisper) - Optimized inference
-- [pynput](https://github.com/moses-palmer/pynput) - Keyboard/mouse control
-- [sounddevice](https://github.com/spatialaudio/python-sounddevice) - Audio capture
+**Hotkey not responding:** Grant your terminal Accessibility permission, then restart Sotto.
+
+**No audio captured:** Grant Microphone permission. If already granted, remove and re-add the permission entry.
+
+**Low accuracy:** Use a larger model (`--model small.en` or `--model medium.en`). Reduce background noise.
+
+**Permission still failing after granting:** Remove the app from the permission list, re-add it, then restart.
+
+## License
+
+MIT

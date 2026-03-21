@@ -4,29 +4,35 @@ Native macOS settings panel using PyObjC.
 """
 
 from typing import Callable, Optional
-import threading
 
+from Foundation import NSObject
 
 # Singleton settings window instance
 _settings_window = None
 
 
-class SettingsWindowController:
+class SettingsWindowController(NSObject):
     """
     Native macOS settings window using PyObjC/AppKit.
     Simple single-view layout with essential settings.
     """
 
-    def __init__(self, config, on_save: Optional[Callable] = None):
+    def initWithConfig_onSave_(self, config, on_save):
+        import objc
+        self = objc.super(SettingsWindowController, self).init()
+        if self is None:
+            return None
         self.config = config
         self.on_save = on_save
         self._window = None
         self._controls = {}
+        return self
 
     def show(self):
         """Show the settings window (creates if needed)"""
         try:
             from PyObjCTools import AppHelper
+
             AppHelper.callAfter(self._show_on_main_thread)
         except ImportError:
             print("[Sotto] Settings window requires PyObjC")
@@ -40,18 +46,27 @@ class SettingsWindowController:
             self._window.makeKeyAndOrderFront_(None)
             # Bring app to front
             from AppKit import NSApplication
+
             NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
 
     def _create_window(self):
         """Create the settings window"""
         try:
             from AppKit import (
-                NSWindow, NSWindowStyleMaskTitled, NSWindowStyleMaskClosable,
-                NSBackingStoreBuffered, NSScreen, NSMakeRect,
-                NSTextField, NSPopUpButton, NSButton, NSBox,
-                NSFont, NSColor, NSTextAlignmentRight, NSTextAlignmentLeft,
-                NSBezelStyleRounded, NSButtonTypeSwitch,
-                NSView, NSApplication
+                NSBackingStoreBuffered,
+                NSBezelStyleRounded,
+                NSBox,
+                NSButton,
+                NSButtonTypeSwitch,
+                NSColor,
+                NSFont,
+                NSMakeRect,
+                NSPopUpButton,
+                NSScreen,
+                NSTextField,
+                NSWindow,
+                NSWindowStyleMaskClosable,
+                NSWindowStyleMaskTitled,
             )
 
             # Window size and position
@@ -63,10 +78,7 @@ class SettingsWindowController:
             # Create window
             style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
             self._window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-                NSMakeRect(x, y, width, height),
-                style,
-                NSBackingStoreBuffered,
-                False
+                NSMakeRect(x, y, width, height), style, NSBackingStoreBuffered, False
             )
             self._window.setTitle_("Sotto Settings")
             self._window.setReleasedWhenClosed_(False)
@@ -85,18 +97,16 @@ class SettingsWindowController:
             else:
                 mode_popup.selectItemAtIndex_(0)
             content.addSubview_(mode_popup)
-            self._controls['mode'] = mode_popup
+            self._controls["mode"] = mode_popup
             y_pos -= 45
 
             # === Push to Talk Hotkey ===
             y_pos = self._add_label(content, "Push to Talk:", 20, y_pos, width)
-            hotkey_field = NSTextField.alloc().initWithFrame_(
-                NSMakeRect(120, y_pos - 3, 200, 24)
-            )
+            hotkey_field = NSTextField.alloc().initWithFrame_(NSMakeRect(120, y_pos - 3, 200, 24))
             hotkey_field.setStringValue_(self.config.hotkeys.push_to_talk)
             hotkey_field.setFont_(NSFont.systemFontOfSize_(13))
             content.addSubview_(hotkey_field)
-            self._controls['hotkey'] = hotkey_field
+            self._controls["hotkey"] = hotkey_field
             y_pos -= 45
 
             # === Model Selection ===
@@ -111,7 +121,7 @@ class SettingsWindowController:
             if current_model in models:
                 model_popup.selectItemWithTitle_(current_model)
             content.addSubview_(model_popup)
-            self._controls['model'] = model_popup
+            self._controls["model"] = model_popup
             y_pos -= 45
 
             # === Separator ===
@@ -121,20 +131,16 @@ class SettingsWindowController:
             y_pos -= 25
 
             # === Overlay Enabled ===
-            overlay_check = NSButton.alloc().initWithFrame_(
-                NSMakeRect(20, y_pos, 200, 20)
-            )
+            overlay_check = NSButton.alloc().initWithFrame_(NSMakeRect(20, y_pos, 200, 20))
             overlay_check.setButtonType_(NSButtonTypeSwitch)
             overlay_check.setTitle_("Show overlay feedback")
             overlay_check.setState_(1 if self.config.feedback.overlay_enabled else 0)
             content.addSubview_(overlay_check)
-            self._controls['overlay_enabled'] = overlay_check
+            self._controls["overlay_enabled"] = overlay_check
             y_pos -= 35
 
             # === Custom Commands Note ===
-            custom_label = NSTextField.alloc().initWithFrame_(
-                NSMakeRect(20, y_pos, width - 40, 18)
-            )
+            custom_label = NSTextField.alloc().initWithFrame_(NSMakeRect(20, y_pos, width - 40, 18))
             custom_label.setStringValue_("Custom commands: Edit ~/.sotto/config.yaml")
             custom_label.setBezeled_(False)
             custom_label.setDrawsBackground_(False)
@@ -147,9 +153,7 @@ class SettingsWindowController:
 
             # === Buttons ===
             # Cancel button
-            cancel_btn = NSButton.alloc().initWithFrame_(
-                NSMakeRect(width - 190, 15, 80, 32)
-            )
+            cancel_btn = NSButton.alloc().initWithFrame_(NSMakeRect(width - 190, 15, 80, 32))
             cancel_btn.setTitle_("Cancel")
             cancel_btn.setBezelStyle_(NSBezelStyleRounded)
             cancel_btn.setTarget_(self)
@@ -157,9 +161,7 @@ class SettingsWindowController:
             content.addSubview_(cancel_btn)
 
             # Save button
-            save_btn = NSButton.alloc().initWithFrame_(
-                NSMakeRect(width - 100, 15, 80, 32)
-            )
+            save_btn = NSButton.alloc().initWithFrame_(NSMakeRect(width - 100, 15, 80, 32))
             save_btn.setTitle_("Save")
             save_btn.setBezelStyle_(NSBezelStyleRounded)
             save_btn.setKeyEquivalent_("\r")  # Enter key
@@ -170,15 +172,14 @@ class SettingsWindowController:
         except Exception as e:
             print(f"[Sotto] Error creating settings window: {e}")
             import traceback
+
             traceback.print_exc()
 
     def _add_label(self, parent, text: str, x: int, y: int, width: int) -> int:
         """Add a label and return current y position"""
-        from AppKit import NSTextField, NSFont, NSColor, NSTextAlignmentRight
+        from AppKit import NSColor, NSFont, NSTextAlignmentRight, NSTextField
 
-        label = NSTextField.alloc().initWithFrame_(
-            ((x, y - 3), (90, 20))
-        )
+        label = NSTextField.alloc().initWithFrame_(((x, y - 3), (90, 20)))
         label.setStringValue_(text)
         label.setBezeled_(False)
         label.setDrawsBackground_(False)
@@ -199,15 +200,15 @@ class SettingsWindowController:
         """Handle save button"""
         try:
             # Read values from controls
-            mode_index = self._controls['mode'].indexOfSelectedItem()
+            mode_index = self._controls["mode"].indexOfSelectedItem()
             self.config.mode = "always_listening" if mode_index == 1 else "push_to_talk"
 
-            self.config.hotkeys.push_to_talk = self._controls['hotkey'].stringValue()
+            self.config.hotkeys.push_to_talk = self._controls["hotkey"].stringValue()
 
-            self.config.transcription.model = self._controls['model'].titleOfSelectedItem()
+            self.config.transcription.model = self._controls["model"].titleOfSelectedItem()
 
-            overlay_state = self._controls['overlay_enabled'].state()
-            self.config.feedback.overlay_enabled = (overlay_state == 1)
+            overlay_state = self._controls["overlay_enabled"].state()
+            self.config.feedback.overlay_enabled = overlay_state == 1
 
             # Save to disk
             self.config.save()
@@ -225,6 +226,7 @@ class SettingsWindowController:
         except Exception as e:
             print(f"[Sotto] Error saving settings: {e}")
             import traceback
+
             traceback.print_exc()
 
 
@@ -239,7 +241,7 @@ def show_settings_window(config, on_save: Optional[Callable] = None):
     global _settings_window
 
     if _settings_window is None:
-        _settings_window = SettingsWindowController(config, on_save)
+        _settings_window = SettingsWindowController.alloc().initWithConfig_onSave_(config, on_save)
 
     _settings_window.config = config
     _settings_window.on_save = on_save
