@@ -10,7 +10,9 @@ No cloud. No latency. No data leaves your Mac.
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS-000000?style=flat-square&logo=apple" />
-  <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/tauri-v2-FFC131?style=flat-square&logo=tauri&logoColor=white" />
+  <img src="https://img.shields.io/badge/react-19-61DAFB?style=flat-square&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/whisper-faster--whisper-FF6F00?style=flat-square" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
 </p>
@@ -19,43 +21,145 @@ No cloud. No latency. No data leaves your Mac.
 
 ## How It Works
 
-Hold a hotkey. Speak. Release. Sotto transcribes your speech locally using [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2), classifies the intent with sub-millisecond regex parsing, and either types the text at your cursor or executes a system command.
+Press a hotkey. Speak. Press again. Sotto transcribes your speech locally using [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2), classifies the intent with sub-millisecond regex parsing, and either types the text at your cursor or executes a system command.
 
-The entire pipeline runs in a single process with no network calls.
+The entire pipeline runs locally with no network calls.
 
 ```
-Microphone → Audio Engine (16kHz) → Whisper AI → Intent Parser → Executor
-                                                                    ↓
-                                                          Keyboard / AppleScript
+User presses Cmd+Shift+S
+        ↓
+Tauri → stdin JSON → Python sidecar
+        ↓
+sounddevice captures audio → streams levels back as JSON
+        ↓
+React pill renders real-time waveform
+        ↓
+User presses Cmd+Shift+S again
+        ↓
+faster-whisper transcribes → Intent Parser → Executor
+                                                ↓
+                                      pynput keyboard / AppleScript
 ```
 
 ## Features
 
-- **Push-to-talk and always-listening modes** with configurable hotkeys
+- **Push-to-talk** with global hotkey (`Cmd+Shift+S`)
 - **30+ voice commands**: app control, volume, brightness, clipboard, tabs, search
 - **Dictation**: speak naturally, text appears at your cursor
-- **Dynamic Island HUD**: native macOS overlay shows transcription feedback
-- **Menubar app**: lives in the system tray, no Dock icon
+- **Pill overlay**: minimal floating UI shows recording state and live waveform
+- **System tray app**: lives in the menubar, no Dock icon
+- **Settings window**: configure model, hotkey, and preferences via native UI
 - **Metal GPU acceleration** on Apple Silicon via CTranslate2
 - **Multiple Whisper models**: tiny, base, small, medium, large-v3
 
+## Architecture
+
+Sotto is a Tauri v2 app with a Python sidecar for audio and AI processing.
+
+```
+sotto-ui/                        # Tauri v2 application
+├── src-tauri/
+│   ├── src/
+│   │   ├── main.rs              # Tauri entry point
+│   │   ├── lib.rs               # App setup, window management, system tray
+│   │   └── sidecar.rs           # Spawn & communicate with Python process
+│   └── tauri.conf.json          # Window config, permissions, sidecar bundle
+│
+├── src/
+│   ├── pill/                    # Floating pill overlay (recording UI + waveform)
+│   ├── settings/                # Settings window (model, hotkey, preferences)
+│   ├── components/              # Shared React components
+│   └── lib/                     # Utilities, IPC helpers, types
+│
+sotto/                           # Python sidecar (audio + AI engine)
+├── core/
+│   ├── audio.py                 # Mic capture (sounddevice, 16kHz/512 blocks)
+│   ├── transcriber.py           # faster-whisper with lazy model loading
+│   ├── command_parser.py        # Compiled regex intent classifier
+│   └── executor.py              # pynput keyboard sim + AppleScript
+└── main.py                      # Sidecar entry point (stdin/stdout JSON IPC)
+```
+
+### IPC Model
+
+Tauri spawns the Python engine as a sidecar process (bundled via PyInstaller). Communication is stdin/stdout JSON messages:
+
+| Direction | Message | Purpose |
+|-----------|---------|---------|
+| Tauri → Python | `start_recording` | Begin audio capture |
+| Python → Tauri | `audio_level` | Real-time mic levels for waveform |
+| Tauri → Python | `stop_recording` | Stop capture, run transcription |
+| Python → Tauri | `transcription` | Final text result |
+| Python → Tauri | `status` | Engine state changes |
+
+### Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Tauri v2 over Electron | Tiny binary, native webview, Rust performance |
+| Python sidecar over native Rust audio | Leverage mature `faster-whisper` + `sounddevice` ecosystem |
+| stdin/stdout JSON over HTTP/WebSocket | Simplest IPC, no port management, process lifecycle tied to app |
+| `faster-whisper` over `openai-whisper` | 4x faster inference, lower memory, CTranslate2 backend |
+| Regex parsing over ML classifier | Sub-millisecond, deterministic, no model loading overhead |
+| `pynput` for keyboard simulation | Cross-app text injection without clipboard pollution |
+
 ## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Rust (via [rustup](https://rustup.rs))
+- pnpm
+- portaudio (`brew install portaudio` on macOS)
+
+### Quick Setup
 
 ```bash
 git clone https://github.com/vedantggwp/Sotto.git
 cd Sotto
-python -m venv venv
-source venv/bin/activate
-pip install -e .
-
-# Menubar app
-sotto
-
-# CLI mode
-sotto --cli
+bash scripts/setup.sh
+cd sotto-ui && pnpm tauri dev
 ```
 
-**Default hotkey:** `Cmd+Shift+Space` (hold to record, release to transcribe)
+### Manual Setup
+
+```bash
+git clone https://github.com/vedantggwp/Sotto.git
+cd Sotto
+
+# Python setup
+python -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"
+
+# Build sidecar binary
+pip install pyinstaller
+bash scripts/build_sidecar.sh
+
+# Frontend setup
+cd sotto-ui
+pnpm install
+
+# Run in development mode
+pnpm tauri dev
+```
+
+**Production build:**
+
+```bash
+cd sotto-ui
+pnpm tauri build
+# Output: src-tauri/target/release/bundle/macos/Sotto.app
+```
+
+**CLI mode** (run the Python engine standalone, no UI):
+
+```bash
+source venv/bin/activate
+python -m sotto.main --cli
+```
+
+**Default hotkey:** `Cmd+Shift+S`
 
 ### macOS Permissions
 
@@ -65,42 +169,6 @@ Sotto requires two permissions in **System Settings > Privacy & Security**:
 |-----------|-----|
 | Accessibility | Global hotkey capture + keyboard simulation |
 | Microphone | Audio recording |
-
-## Architecture
-
-```
-sotto/
-├── main.py                  # Application coordinator + state machine
-├── config.py                # Pydantic config + YAML persistence (~/.sotto/)
-│
-├── core/
-│   ├── audio.py             # Threaded mic capture (sounddevice, 16kHz/512 blocks)
-│   ├── transcriber.py       # faster-whisper with lazy model loading
-│   ├── command_parser.py    # Compiled regex intent classifier
-│   ├── executor.py          # pynput keyboard sim + AppleScript system control
-│   └── hotkeys.py           # Global hotkey listener (PTT + toggle modes)
-│
-├── ui/
-│   ├── menubar.py           # rumps menubar integration
-│   ├── notch.py             # Dynamic Island-style HUD overlay (PyObjC)
-│   ├── overlay.py           # Overlay factory with terminal fallback
-│   └── settings.py          # Native preferences window (PyObjC)
-│
-└── utils/
-    ├── logging.py           # Rotating file logger
-    └── permissions.py       # macOS permission checks
-```
-
-### Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| `faster-whisper` over `openai-whisper` | 4x faster inference, lower memory, CTranslate2 backend |
-| Regex parsing over ML classifier | Sub-millisecond, deterministic, no model loading overhead |
-| `pynput` for keyboard simulation | Cross-app text injection without clipboard pollution |
-| `rumps` for menubar | Native NSStatusItem with minimal code |
-| PyObjC for HUD overlay | Real `NSWindow` with continuous corner curves, spring animations |
-| Single process, no server | Menubar utilities don't need HTTP/WebSocket infrastructure |
 
 ## Voice Commands
 
@@ -140,8 +208,7 @@ Config: `~/.sotto/config.yaml` | Logs: `~/.sotto/logs/sotto.log`
 mode: push_to_talk
 
 hotkeys:
-  push_to_talk: "<cmd>+<shift>+<space>"
-  toggle_listening: "<cmd>+<shift>+l"
+  push_to_talk: "<cmd>+<shift>+s"
 
 transcription:
   model: small.en
@@ -153,41 +220,48 @@ feedback:
   sound_enabled: true
 ```
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Desktop shell | [Tauri v2](https://v2.tauri.app/) (Rust) |
+| Frontend | [React 19](https://react.dev/) + TypeScript |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com/) |
+| Speech-to-text | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) |
+| Audio capture | [sounddevice](https://github.com/spatialaudio/python-sounddevice) (PortAudio) |
+| Keyboard control | [pynput](https://github.com/moses-palmer/pynput) |
+| Config | [Pydantic](https://github.com/pydantic/pydantic) + YAML |
+| Sidecar bundling | [PyInstaller](https://pyinstaller.org/) |
+
 ## Development
 
 ```bash
+cd sotto-ui
+pnpm tauri dev              # Dev mode with hot reload
+pnpm tauri build            # Production build
+```
+
+```bash
 source venv/bin/activate
-sotto --cli --debug          # CLI with debug output
-sotto --model small.en       # Specific model
-pytest tests/                # Run tests
-ruff check .                 # Lint
+python -m sotto.main --cli --debug   # CLI with debug output
+pytest tests/                        # Run tests
+ruff check .                         # Lint
 ```
 
 ### Adding Commands
 
-1. Add a regex pattern to `COMMAND_PATTERNS` in `core/command_parser.py`
-2. Add a handler method to `CommandExecutor._handlers` in `core/executor.py`
-
-## Tech Stack
-
-| Component | Library |
-|-----------|---------|
-| Speech-to-text | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2) |
-| Audio capture | [sounddevice](https://github.com/spatialaudio/python-sounddevice) (PortAudio) |
-| Keyboard control | [pynput](https://github.com/moses-palmer/pynput) |
-| Menubar | [rumps](https://github.com/jaredks/rumps) |
-| Native UI | [PyObjC](https://github.com/ronaldoussoren/pyobjc) |
-| Config | [Pydantic](https://github.com/pydantic/pydantic) + YAML |
+1. Add a regex pattern to `COMMAND_PATTERNS` in `sotto/core/command_parser.py`
+2. Add a handler method to `CommandExecutor._handlers` in `sotto/core/executor.py`
 
 ## Troubleshooting
 
-**Hotkey not responding:** Grant your terminal Accessibility permission, then restart Sotto.
+**Hotkey not responding:** Grant Accessibility permission to Sotto.app (or your terminal in dev mode), then restart.
 
 **No audio captured:** Grant Microphone permission. If already granted, remove and re-add the permission entry.
 
-**Low accuracy:** Use a larger model (`--model small.en` or `--model medium.en`). Reduce background noise.
+**Low accuracy:** Use a larger model (`small.en` or `medium.en` in settings). Reduce background noise.
 
-**Permission still failing after granting:** Remove the app from the permission list, re-add it, then restart.
+**Sidecar not starting:** Ensure `scripts/build_sidecar.sh` completed successfully and the binary exists in `sotto-ui/src-tauri/binaries/`.
 
 ## License
 

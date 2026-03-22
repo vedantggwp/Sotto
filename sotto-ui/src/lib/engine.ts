@@ -1,4 +1,5 @@
-import { listen, emit } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import type { RecordingState, SidecarMessage } from "./types";
 
 type StateCallback = (state: RecordingState) => void;
@@ -47,6 +48,10 @@ export function connectToEngine(callbacks: EngineCallbacks) {
   };
 }
 
-export async function sendToEngine(command: string, data?: Record<string, unknown>) {
-  await emit("sotto://command", { command, ...data });
+export async function sendCommand(
+  command: string,
+  key?: string,
+  value?: string,
+): Promise<void> {
+  await invoke("engine_command", { command, key, value });
 }

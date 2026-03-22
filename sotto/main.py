@@ -23,6 +23,23 @@ from .utils.permissions import check_accessibility_permissions, prompt_for_acces
 logger = get_logger("main")
 
 
+class _NoOpOverlay:
+    """Stub overlay that logs messages instead of showing native UI.
+    The real overlay now lives in the Tauri frontend."""
+
+    def show(self, message: str, icon: str = "") -> None:
+        logger.debug(f"[overlay] {icon} {message}")
+
+    def show_success(self, message: str) -> None:
+        logger.debug(f"[overlay] {message}")
+
+    def show_error(self, message: str) -> None:
+        logger.warning(f"[overlay] {message}")
+
+    def show_transcription(self, text: str) -> None:
+        logger.debug(f"[overlay] transcription: {text}")
+
+
 class Sotto:
     """
     Main Sotto application.
@@ -78,15 +95,9 @@ class Sotto:
 
     @property
     def overlay(self):
-        """Lazy overlay creation - ensures it's created after NSApplication exists"""
+        """Lazy overlay creation - returns a no-op stub (real UI is now Tauri)"""
         if self._overlay is None:
-            # Only import overlay when needed to avoid early UI initialization
-            from .ui.overlay import create_overlay
-
-            self._overlay = create_overlay(
-                duration=self.config.feedback.overlay_duration,
-                position=self.config.feedback.overlay_position,
-            )
+            self._overlay = _NoOpOverlay()
         return self._overlay
 
     def _on_executor_status(self, message: str):

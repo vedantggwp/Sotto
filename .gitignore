@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -134,6 +134,20 @@ models/
 
 # Sotto user config
 .sotto/
+
+# Tauri build artifacts
+sotto-ui/src-tauri/target/
+sotto-ui/dist/
+
+# PyInstaller
+*.spec
+!Sotto.spec
+
+# Sidecar binaries are built by scripts/setup.sh (too large for git)
+sotto-ui/src-tauri/binaries/sotto-engine-*
+
+# macOS
+*.app/
 
 # Temporary files
 *.tmp

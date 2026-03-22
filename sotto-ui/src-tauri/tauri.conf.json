@@ -70,7 +70,15 @@
   },
   "plugins": {
     "shell": {
-      "open": "^https://.*"
+      "open": "^https://.*",
+      "sidecar": true,
+      "scope": [
+        {
+          "name": "binaries/sotto-engine",
+          "sidecar": true,
+          "args": true
+        }
+      ]
     }
   }
 }

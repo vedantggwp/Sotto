@@ -1,4 +1,4 @@
-export type RecordingState = "idle" | "listening" | "transcribing" | "formatting" | "done";
+export type RecordingState = "idle" | "listening" | "transcribing" | "formatting" | "done" | "error";
 
 export type PillPosition =
   | "top-left"

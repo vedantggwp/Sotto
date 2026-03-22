@@ -73,10 +73,8 @@ black --check .
 
 ### UI Layer
 
-- `ui/menubar.py`: System tray app using `rumps`
-- `ui/notch.py`: Dynamic Island-style HUD overlay (PyObjC, native NSWindow)
-- `ui/overlay.py`: Overlay factory — tries NotchOverlay, falls back to SimpleOverlay (terminal)
-- `ui/settings.py`: Native preferences window (PyObjC)
+- `ui/menubar.py`: System tray app using `rumps` (CLI fallback)
+- Overlay and settings have moved to the Tauri frontend (`sotto-ui/`)
 
 ### Configuration
 

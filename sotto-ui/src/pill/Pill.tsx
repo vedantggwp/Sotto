@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { AudioDots } from "./AudioDots";
 import { connectToEngine } from "../lib/engine";
 import type { RecordingState } from "../lib/types";
@@ -17,55 +16,25 @@ export function Pill() {
     }
   }, []);
 
+  const handleError = useCallback(() => {
+    setState("error");
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setState("idle"), 3000);
+  }, []);
+
   useEffect(() => {
     const disconnect = connectToEngine({
       onStateChange: handleStateChange,
       onAudioLevel: setAudioLevel,
+      onError: handleError,
     });
     return () => {
       disconnect();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [handleStateChange]);
+  }, [handleStateChange, handleError]);
 
-  // Demo: simulate natural speech-like audio levels (DEV only)
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    if (state !== "listening") return;
-    let frame: number;
-    const simulate = () => {
-      const t = performance.now() / 1000;
-      // Layered sine waves for organic speech-like envelope
-      const base = 0.25;
-      const speech = 0.3 * Math.sin(t * 1.8) * Math.sin(t * 0.7);
-      const breath = 0.12 * Math.sin(t * 4.7);
-      const detail = 0.08 * Math.sin(t * 11.3);
-      const noise = 0.05 * (Math.random() - 0.5);
-      setAudioLevel(Math.max(0, Math.min(1, base + speech + breath + detail + noise)));
-      frame = requestAnimationFrame(simulate);
-    };
-    frame = requestAnimationFrame(simulate);
-    return () => cancelAnimationFrame(frame);
-  }, [state]);
-
-  // Cycle states via click OR global shortcut (Cmd+Shift+D) — DEV only
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const cycle: RecordingState[] = ["listening", "transcribing", "done", "idle", "listening"];
-    let idx = 0;
-    const advance = () => {
-      idx = (idx + 1) % cycle.length;
-      handleStateChange(cycle[idx]);
-    };
-    window.addEventListener("click", advance);
-    let unlisten: (() => void) | undefined;
-    listen("sotto://demo-cycle", advance).then((fn) => { unlisten = fn; });
-    return () => {
-      window.removeEventListener("click", advance);
-      unlisten?.();
-    };
-  }, [handleStateChange]);
-
+  const isError = state === "error";
   const isVisible = state !== "idle";
   const isListening = state === "listening";
   const isDone = state === "done";
@@ -75,6 +44,7 @@ export function Pill() {
     "pill",
     isVisible && "visible",
     isListening && "listening",
+    isError && "error",
   ].filter(Boolean).join(" ");
 
   return (
@@ -103,6 +73,23 @@ export function Pill() {
           strokeLinejoin="round"
         >
           <polyline points="20 6 9 17 4 12" />
+        </svg>
+      )}
+
+      {isError && (
+        <svg
+          className="error-icon"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       )}
     </div>

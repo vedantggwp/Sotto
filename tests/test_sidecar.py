@@ -197,6 +197,19 @@ def test_set_config_applies_model(capsys):
     assert engine.transcriber.model_name == "small.en"
 
 
+def test_set_config_applies_dotted_model_key(capsys):
+    """Settings may send dotted keys like 'transcription.model'; leaf key is used."""
+    engine = _make_engine()
+    engine.transcriber.unload_model = MagicMock()
+    cmd = CommandMsg(command="set_config", key="transcription.model", value="tiny.en")
+
+    result = handle_command(cmd, engine)
+
+    assert result == "config_set"
+    engine.transcriber.unload_model.assert_called_once()
+    assert engine.transcriber.model_name == "tiny.en"
+
+
 def test_unknown_command_returns_unknown_and_sends_error(capsys):
     engine = _make_engine()
     cmd = CommandMsg(command="do_the_magic")
@@ -227,3 +240,25 @@ def test_stop_recording_dictation_types_text(capsys):
 
     engine.executor.type_text.assert_called_once_with("meeting at noon")
     engine.executor.execute.assert_not_called()
+
+
+def test_stop_recording_sends_transcribing_then_done_states(capsys):
+    """Verify the exact state sequence: transcribing -> transcription -> done."""
+    import json
+
+    engine = _make_engine(
+        audio_return=_make_audio(1.0),
+        transcribe_return=("hello", 0.95),
+        parse_return=ParsedIntent(
+            intent_type=IntentType.DICTATION,
+            text="hello",
+        ),
+    )
+    cmd = CommandMsg(command="stop_recording")
+
+    handle_command(cmd, engine)
+
+    captured = capsys.readouterr().out
+    lines = [json.loads(line) for line in captured.strip().split("\n") if line.strip()]
+    states = [msg["state"] for msg in lines if msg.get("type") == "state_change"]
+    assert states == ["transcribing", "done"], f"Expected [transcribing, done], got {states}"

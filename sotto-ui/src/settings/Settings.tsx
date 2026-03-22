@@ -1,6 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 type Tab = "general" | "hotkeys" | "models" | "about";
+
+interface SottoConfig {
+  mode: string;
+  language: string;
+  pill_position: string;
+  model: string;
+  [key: string]: string;
+}
+
+const DEFAULT_CONFIG: SottoConfig = {
+  mode: "push_to_talk",
+  language: "en",
+  pill_position: "top-center",
+  model: "small.en",
+};
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "general", label: "General", icon: "⚙" },
@@ -9,8 +25,47 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "about", label: "About", icon: "ℹ" },
 ];
 
+function useConfig() {
+  const [config, setConfig] = useState<SottoConfig>(DEFAULT_CONFIG);
+
+  useEffect(() => {
+    invoke<Record<string, unknown>>("get_config")
+      .then((remote) => {
+        const transcription = (remote.transcription as Record<string, string>) || {};
+        const feedback = (remote.feedback as Record<string, string>) || {};
+        setConfig({
+          mode: (remote.mode as string) || DEFAULT_CONFIG.mode,
+          language: transcription.language || DEFAULT_CONFIG.language,
+          pill_position: feedback.overlay_position || DEFAULT_CONFIG.pill_position,
+          model: transcription.model || DEFAULT_CONFIG.model,
+        });
+      })
+      .catch((err) => console.error("Failed to load config:", err));
+  }, []);
+
+  const updateValue = (key: string, value: string) => {
+    const leafKey = key.split(".").pop() || key;
+    const stateKeyMap: Record<string, keyof SottoConfig> = {
+      mode: "mode",
+      language: "language",
+      overlay_position: "pill_position",
+      model: "model",
+    };
+    const stateKey = stateKeyMap[leafKey];
+    if (stateKey) {
+      setConfig((prev) => ({ ...prev, [stateKey]: value }));
+    }
+    invoke("set_config_value", { key, value }).catch((err) =>
+      console.error(`Failed to set ${key}:`, err),
+    );
+  };
+
+  return { config, updateValue };
+}
+
 export function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>("general");
+  const { config, updateValue } = useConfig();
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#111111" }}>
@@ -69,9 +124,9 @@ export function Settings() {
 
       {/* Content */}
       <main style={{ flex: 1, padding: "32px 28px", overflowY: "auto" }}>
-        {activeTab === "general" && <GeneralTab />}
+        {activeTab === "general" && <GeneralTab config={config} onChange={updateValue} />}
         {activeTab === "hotkeys" && <HotkeyTab />}
-        {activeTab === "models" && <ModelTab />}
+        {activeTab === "models" && <ModelTab config={config} onChange={updateValue} />}
         {activeTab === "about" && <AboutTab />}
       </main>
     </div>
@@ -146,10 +201,22 @@ function SettingRow({
   );
 }
 
-function Select({ options, defaultValue }: { options: { value: string; label: string }[]; defaultValue?: string }) {
+function Select({
+  options,
+  defaultValue,
+  value,
+  onChange,
+}: {
+  options: { value: string; label: string }[];
+  defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <select
-      defaultValue={defaultValue}
+      value={value}
+      defaultValue={value === undefined ? defaultValue : undefined}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
       style={{
         appearance: "none",
         background: "var(--bg-input)",
@@ -198,7 +265,13 @@ function Kbd({ children }: { children: string }) {
 
 /* ─── Tabs ────────────────────────────────────────────────────── */
 
-function GeneralTab() {
+function GeneralTab({
+  config,
+  onChange,
+}: {
+  config: SottoConfig;
+  onChange: (key: string, value: string) => void;
+}) {
   return (
     <>
       <TabHeader title="General" />
@@ -206,10 +279,11 @@ function GeneralTab() {
         <SettingRow label="Mode" description="How Sotto listens for your voice">
           <Select
             options={[
-              { value: "push-to-talk", label: "Push to Talk" },
-              { value: "always-listening", label: "Always Listening" },
+              { value: "push_to_talk", label: "Push to Talk" },
+              { value: "always_listening", label: "Always Listening" },
             ]}
-            defaultValue="push-to-talk"
+            value={config.mode}
+            onChange={(v) => onChange("mode", v)}
           />
         </SettingRow>
         <SettingRow label="Language" description="Transcription language" isLast>
@@ -218,7 +292,8 @@ function GeneralTab() {
               { value: "en", label: "English" },
               { value: "auto", label: "Auto-detect" },
             ]}
-            defaultValue="en"
+            value={config.language}
+            onChange={(v) => onChange("transcription.language", v)}
           />
         </SettingRow>
       </Card>
@@ -231,7 +306,8 @@ function GeneralTab() {
               { value: "top-right", label: "Top Right" },
               { value: "bottom-center", label: "Bottom Center" },
             ]}
-            defaultValue="top-center"
+            value={config.pill_position}
+            onChange={(v) => onChange("feedback.overlay_position", v)}
           />
         </SettingRow>
       </Card>
@@ -244,18 +320,29 @@ function HotkeyTab() {
     <>
       <TabHeader title="Hotkeys" />
       <Card title="Keyboard Shortcuts">
-        <SettingRow label="Push to Talk" description="Hold to record, release to transcribe">
-          <Kbd>Right ⌥</Kbd>
+        <SettingRow label="Toggle Recording" description="Start/stop recording">
+          <Kbd>⌘ ⇧ S</Kbd>
         </SettingRow>
-        <SettingRow label="Toggle Listening" description="Start/stop recording" isLast>
-          <Kbd>⌥ + S</Kbd>
+        <SettingRow label="Open Settings" description="Open this window" isLast>
+          <Kbd>⌘ ,</Kbd>
         </SettingRow>
+      </Card>
+      <Card>
+        <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.6 }}>
+          Shortcuts are managed by the system and cannot be customized yet.
+        </div>
       </Card>
     </>
   );
 }
 
-function ModelTab() {
+function ModelTab({
+  config,
+  onChange,
+}: {
+  config: SottoConfig;
+  onChange: (key: string, value: string) => void;
+}) {
   return (
     <>
       <TabHeader title="Whisper Model" />
@@ -273,7 +360,8 @@ function ModelTab() {
               { value: "medium.en", label: "Medium (769M)" },
               { value: "large-v3", label: "Large v3 (1.5B)" },
             ]}
-            defaultValue="base.en"
+            value={config.model}
+            onChange={(v) => onChange("transcription.model", v)}
           />
         </SettingRow>
       </Card>

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class StateChangeMsg:
     """Notify Tauri that the engine state has changed."""
-    state: str  # "idle" | "listening" | "processing"
+    state: str  # "idle" | "listening" | "transcribing" | "done" | "error"
 
     def to_dict(self) -> dict:
         return {"type": "state_change", "state": self.state}

@@ -118,7 +118,7 @@ def handle_command(cmd: CommandMsg, engine: SidecarEngine) -> str:
             send(StateChangeMsg(state="idle"))
             return "idle"
 
-        send(StateChangeMsg(state="processing"))
+        send(StateChangeMsg(state="transcribing"))
 
         text, _confidence = engine.transcriber.transcribe(audio)
 
@@ -133,7 +133,7 @@ def handle_command(cmd: CommandMsg, engine: SidecarEngine) -> str:
                 )
 
         send(TranscriptionMsg(text=text))
-        send(StateChangeMsg(state="idle"))
+        send(StateChangeMsg(state="done"))
         return "done"
 
     if command == "set_config":
@@ -153,7 +153,8 @@ def handle_command(cmd: CommandMsg, engine: SidecarEngine) -> str:
 
 def _apply_config(key: str, value: str, engine: SidecarEngine) -> None:
     """Apply a runtime configuration change."""
-    if key == "model":
+    leaf_key = key.split(".")[-1] if "." in key else key
+    if leaf_key == "model":
         # Hot-swap the Whisper model; unload first to free RAM
         engine.transcriber.unload_model()
         engine.transcriber.model_name = value

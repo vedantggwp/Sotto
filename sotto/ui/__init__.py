@@ -1,10 +1,9 @@
 """
 Sotto UI Module
-User interface components including menubar, overlay, and settings.
+User interface components including menubar (CLI fallback).
+Overlay and settings have moved to the Tauri UI layer.
 """
 
 from .menubar import SottoMenubar
-from .overlay import SimpleOverlay, create_overlay
-from .settings import show_settings_window
 
-__all__ = ["SottoMenubar", "SimpleOverlay", "create_overlay", "show_settings_window"]
+__all__ = ["SottoMenubar"]

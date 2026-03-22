@@ -153,10 +153,16 @@ class SottoMenubar(rumps.App):
         )
 
     def _open_settings(self, _):
-        """Open settings window"""
-        from .settings import show_settings_window
-
-        show_settings_window(self.config, on_save=self._on_settings_saved)
+        """Open settings window — only available in standalone mode, not sidecar."""
+        try:
+            from .settings import show_settings_window
+            show_settings_window(self.config, on_save=self._on_settings_saved)
+        except ImportError:
+            rumps.notification(
+                title="Sotto",
+                subtitle="Settings",
+                message="Settings are available in the Tauri app window (⌘ ,)",
+            )
 
     def _on_settings_saved(self, config):
         """Handle settings saved callback"""

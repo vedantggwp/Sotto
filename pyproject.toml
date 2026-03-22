@@ -26,6 +26,16 @@ dependencies = [
 
 [project.scripts]
 sotto = "sotto.main:main"
+sotto-sidecar = "sotto.sidecar:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1.0",
+    "black>=23.0",
+    "pyinstaller>=6.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
