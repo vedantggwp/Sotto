@@ -13,9 +13,11 @@ The process:
   5. On stop_recording: transcribes, parses intent, executes, reports result.
 """
 
+import atexit
 import math
+import signal
 import sys
-import time
+import threading
 from dataclasses import dataclass
 from typing import Optional
 
@@ -41,6 +43,10 @@ MIN_AUDIO_DURATION_S = 0.1
 
 # Audio sample rate — must match AudioEngine.SAMPLE_RATE
 SAMPLE_RATE = 16_000
+
+# Flag set by signal handlers to request clean shutdown from the main loop.
+# Signal handlers must NOT call cleanup directly — deadlock risk with audio lock.
+_shutdown_requested = threading.Event()
 
 
 # ---------------------------------------------------------------------------
@@ -163,16 +169,50 @@ def _apply_config(key: str, value: str, engine: SidecarEngine) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+def _cleanup(engine_ref: list) -> None:
+    """
+    Release audio streams and Whisper model. Called from the main thread
+    after the stdin loop exits — never from a signal handler (deadlock risk).
+    Safe to call multiple times.
+    """
+    if not engine_ref:
+        return
+    eng = engine_ref[0]
+    try:
+        eng.audio.shutdown()
+    except Exception:
+        pass
+    try:
+        eng.transcriber.unload_model()
+    except Exception:
+        pass
+
+
+def _signal_handler(signum, frame):
+    """Set the shutdown flag. Cleanup runs from the main thread, not here."""
+    _shutdown_requested.set()
+
+
+# ---------------------------------------------------------------------------
 # Main read loop
 # ---------------------------------------------------------------------------
 
 def run(engine: Optional[SidecarEngine] = None) -> None:
     """
     Block on stdin, reading one JSON command per line.
-    Exits when 'quit' is received or stdin is closed.
+    Exits when 'quit' is received, stdin is closed (Tauri died), or SIGTERM.
     """
     if engine is None:
         engine = _build_engine()
+
+    engine_ref = [engine]
+    atexit.register(_cleanup, engine_ref)
+
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
 
     send(StateChangeMsg(state="idle"))
 
@@ -180,6 +220,10 @@ def run(engine: Optional[SidecarEngine] = None) -> None:
     engine.transcriber.load_model()
 
     for raw_line in sys.stdin:
+        # Check if a signal requested shutdown
+        if _shutdown_requested.is_set():
+            break
+
         raw_line = raw_line.strip()
         if not raw_line:
             continue
@@ -198,6 +242,9 @@ def run(engine: Optional[SidecarEngine] = None) -> None:
 
         if result == "quit":
             break
+
+    # stdin closed (Tauri died) or quit/signal received — clean up from main thread
+    _cleanup(engine_ref)
 
 
 if __name__ == "__main__":

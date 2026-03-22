@@ -260,10 +260,7 @@ pub fn run() {
                             }
                         }
                         "quit" => {
-                            // Send quit to sidecar before exiting
-                            let state = app.state::<sidecar::SidecarState>();
-                            let msg = serde_json::json!({"command": "quit"}).to_string();
-                            let _ = sidecar::send_to_sidecar(&state, &msg);
+                            // kill_sidecar is called via ExitRequested handler
                             app.exit(0);
                         }
                         _ => {}
@@ -286,6 +283,12 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Sotto");
+        .build(tauri::generate_context!())
+        .expect("error while building Sotto")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                // Kill sidecar on ANY exit — window close, Cmd+Q, tray quit, crash
+                sidecar::kill_sidecar(app);
+            }
+        });
 }

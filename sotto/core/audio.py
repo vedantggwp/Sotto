@@ -122,6 +122,14 @@ class AudioEngine:
         except Exception:
             return None
 
+    def shutdown(self):
+        """Release all audio resources. Safe to call multiple times.
+        Must be called from the main thread (not a signal handler) to avoid
+        deadlocking with the PortAudio callback thread on self._lock.
+        """
+        if self.is_recording():
+            self.stop_recording()
+
     def is_recording(self) -> bool:
         """Check if currently recording"""
         with self._lock:
