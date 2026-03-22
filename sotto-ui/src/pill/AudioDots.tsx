@@ -23,7 +23,14 @@ export function AudioDots({ level }: WaveformProps) {
   const heights = useRef<number[]>(new Array(BAR_COUNT).fill(MIN_HEIGHT));
   const rafRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
+  const levelRef = useRef(level);
 
+  // Keep levelRef in sync with the latest prop without restarting the loop
+  useEffect(() => {
+    levelRef.current = level;
+  }, [level]);
+
+  // RAF loop starts once and reads from levelRef — never restarts
   useEffect(() => {
     const animate = (timestamp: number) => {
       if (!timeRef.current) timeRef.current = timestamp;
@@ -34,7 +41,10 @@ export function AudioDots({ level }: WaveformProps) {
 
         // Add subtle organic variation per bar using sine wave with phase offset
         const variation = 0.15 * Math.sin(elapsed * 3.5 + PHASE_OFFSET[i] * Math.PI * 2);
-        const adjustedLevel = Math.max(0, Math.min(1, level * SENSITIVITY[i] + variation * level));
+        const adjustedLevel = Math.max(
+          0,
+          Math.min(1, levelRef.current * SENSITIVITY[i] + variation * levelRef.current)
+        );
         const targetHeight = MIN_HEIGHT + adjustedLevel * (MAX_HEIGHT - MIN_HEIGHT);
 
         // Smooth interpolation
@@ -54,7 +64,7 @@ export function AudioDots({ level }: WaveformProps) {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [level]);
+  }, []);
 
   return (
     <div className="waveform">

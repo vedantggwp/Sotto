@@ -5,7 +5,7 @@ import { connectToEngine } from "../lib/engine";
 import type { RecordingState } from "../lib/types";
 
 export function Pill() {
-  const [state, setState] = useState<RecordingState>("listening");
+  const [state, setState] = useState<RecordingState>("idle");
   const [audioLevel, setAudioLevel] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -28,8 +28,9 @@ export function Pill() {
     };
   }, [handleStateChange]);
 
-  // Demo: simulate natural speech-like audio levels
+  // Demo: simulate natural speech-like audio levels (DEV only)
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     if (state !== "listening") return;
     let frame: number;
     const simulate = () => {
@@ -47,8 +48,9 @@ export function Pill() {
     return () => cancelAnimationFrame(frame);
   }, [state]);
 
-  // Cycle states via click OR global shortcut (Cmd+Shift+D)
+  // Cycle states via click OR global shortcut (Cmd+Shift+D) — DEV only
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     const cycle: RecordingState[] = ["listening", "transcribing", "done", "idle", "listening"];
     let idx = 0;
     const advance = () => {
