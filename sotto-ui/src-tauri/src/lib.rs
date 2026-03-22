@@ -48,7 +48,7 @@ pub fn run() {
                             }
                             // Cmd+Shift+D → cycle demo states
                             tauri_plugin_global_shortcut::Code::KeyD => {
-                                let _ = app.emit("sotto://demo-cycle", ());
+                                if let Some(pill) = app.get_webview_window("pill") { let _ = pill.emit("sotto://demo-cycle", ()); }
                             }
                             // Cmd+, → open settings
                             tauri_plugin_global_shortcut::Code::Comma => {
@@ -73,7 +73,7 @@ pub fn run() {
             // Cmd+Shift+D → cycle demo states
             let _ = app.global_shortcut().register("CmdOrCtrl+Shift+D");
             // Cmd+, → settings (standard macOS convention)
-            let _ = app.global_shortcut().register("CmdOrCtrl+Shift+Comma");
+            let _ = app.global_shortcut().register("CmdOrCtrl+Comma");
 
             // Build tray menu
             let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
