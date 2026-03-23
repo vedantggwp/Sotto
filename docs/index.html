@@ -40,22 +40,22 @@
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #1a1814;
-        --bg-elevated: #221f1a;
-        --surface: #2a2620;
-        --border: #3a352c;
-        --border-subtle: #302b24;
-        --text: #f8f5f0;
-        --text-secondary: #c8c0b4;
-        --text-dim: #9a9084;
-        --text-muted: #6a6058;
-        --amber: #c4935e;
-        --amber-light: #d4a870;
-        --amber-dim: rgba(196, 147, 94, 0.10);
-        --amber-glow: rgba(196, 147, 94, 0.05);
-        --amber-border: rgba(196, 147, 94, 0.20);
+        --bg: #0e0c0a;
+        --bg-elevated: #1a1614;
+        --surface: #2c2620;
+        --border: #3a322a;
+        --border-subtle: #241e18;
+        --text: #e2d8cc;
+        --text-secondary: #c0b4a6;
+        --text-dim: #887e72;
+        --text-muted: #5e554a;
+        --amber: #da9650;
+        --amber-light: #e4a864;
+        --amber-dim: rgba(218, 150, 80, 0.12);
+        --amber-glow: rgba(218, 150, 80, 0.06);
+        --amber-border: rgba(218, 150, 80, 0.22);
         --green: #6aa860;
-        --nav-bg: rgba(26, 24, 20, 0.85);
+        --nav-bg: rgba(14, 12, 10, 0.90);
       }
     }
 
@@ -171,6 +171,7 @@
       max-width: 780px;
       animation: fadeUp 0.6s ease-out 0.08s both;
       position: relative;
+      text-wrap: balance;
     }
     h1 strong {
       font-weight: 600;
@@ -187,6 +188,7 @@
       line-height: 1.6;
       animation: fadeUp 0.6s ease-out 0.16s both;
       position: relative;
+      text-wrap: pretty;
     }
     .hero-actions {
       display: flex; gap: 12px; margin-top: 44px;
@@ -357,14 +359,6 @@
     .flow-connector-line:nth-child(2) {
       left: 50%; width: 16.66%;
     }
-    .flow-arrow {
-      display: none;
-      color: var(--text-muted);
-      font-size: 14px;
-      align-self: center;
-      flex-shrink: 0;
-      margin-top: -28px;
-    }
 
     /* --- PRINCIPLES --- */
     .principles {
@@ -382,6 +376,7 @@
       font-weight: 300; letter-spacing: -0.03em;
       margin-bottom: 56px; max-width: 560px;
       line-height: 1.2;
+      text-wrap: balance;
     }
     .section-title strong { font-weight: 600; }
     .principles-grid {
@@ -453,14 +448,15 @@
       z-index: 1;
     }
     .arch-icon {
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      width: 40px; height: 40px; border-radius: var(--radius-sm);
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--amber-dim);
       border: 1px solid var(--amber-border);
-      color: var(--amber); font-size: 15px;
+      color: var(--amber);
       margin-bottom: 14px;
       transition: all 0.3s;
     }
+    .arch-icon svg { width: 20px; height: 20px; }
     .arch-node:hover .arch-icon {
       background: rgba(212, 160, 83, 0.15);
       box-shadow: 0 0 16px rgba(212, 160, 83, 0.08);
@@ -481,7 +477,7 @@
       flex-shrink: 0;
     }
 
-    /* --- TECH --- */
+    /* --- TECH STACK --- */
     .tech {
       padding: 0 24px 140px;
       max-width: 960px; margin: 0 auto;
@@ -491,20 +487,29 @@
       margin-top: 48px;
     }
     .tech-tag {
+      display: inline-flex; align-items: center; gap: 8px;
       padding: 9px 16px; border-radius: var(--radius-sm);
       background: var(--surface);
       border: 1px solid var(--border);
       font-family: 'DM Mono', monospace;
       font-size: 12.5px; color: var(--text-dim);
-      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       cursor: default;
+    }
+    .tech-tag svg {
+      width: 14px; height: 14px;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+      flex-shrink: 0;
     }
     .tech-tag:hover {
       border-color: var(--amber-border);
       color: var(--amber);
       background: var(--amber-dim);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     }
+    .tech-tag:hover svg { opacity: 0.9; }
 
     /* --- CTA --- */
     .cta {
@@ -580,15 +585,48 @@
       100% { opacity: 0; transform: scale(2.5); }
     }
 
-    /* --- SCROLL REVEAL --- */
+    /* --- STAGGERED SCROLL REVEAL --- */
     .reveal {
       opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+      transform: translateY(24px);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .reveal.visible {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    /* Stagger children inside revealed sections */
+    .reveal [data-stagger] {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.visible [data-stagger] {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal.visible [data-stagger="1"] { transition-delay: 0.06s; }
+    .reveal.visible [data-stagger="2"] { transition-delay: 0.12s; }
+    .reveal.visible [data-stagger="3"] { transition-delay: 0.18s; }
+    .reveal.visible [data-stagger="4"] { transition-delay: 0.24s; }
+    .reveal.visible [data-stagger="5"] { transition-delay: 0.30s; }
+    .reveal.visible [data-stagger="6"] { transition-delay: 0.36s; }
+    .reveal.visible [data-stagger="7"] { transition-delay: 0.42s; }
+    .reveal.visible [data-stagger="8"] { transition-delay: 0.48s; }
+    .reveal.visible [data-stagger="9"] { transition-delay: 0.54s; }
+    .reveal.visible [data-stagger="10"] { transition-delay: 0.60s; }
+    .reveal.visible [data-stagger="11"] { transition-delay: 0.66s; }
+    .reveal.visible [data-stagger="12"] { transition-delay: 0.72s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { transition-duration: 0s; }
+      .reveal [data-stagger] { transition-duration: 0s; transition-delay: 0s !important; }
+      .hero-badge, h1, .hero-sub, .hero-actions, .demo-section { animation-duration: 0s; }
+      .hero-badge .pulse-ring::after { animation: none; }
     }
 
     /* --- RESPONSIVE --- */
@@ -687,7 +725,6 @@
           <span class="demo-bar-title">sotto &mdash; voice control</span>
         </div>
         <div class="demo-content" id="demo-container">
-          <!-- JS will swap in the img if demo.gif exists, otherwise show placeholder -->
           <div class="demo-placeholder" id="demo-placeholder">
             <div class="demo-placeholder-icon">&#9654;</div>
             <span>Demo recording coming soon</span>
@@ -699,24 +736,24 @@
 
   <!-- HOW IT WORKS -->
   <section class="flow-section reveal" id="how">
-    <div class="section-label">How it works</div>
-    <h2 class="section-title">Three steps. <strong>Zero round trips.</strong></h2>
+    <div class="section-label" data-stagger="1">How it works</div>
+    <h2 class="section-title" data-stagger="2">Three steps. <strong>Zero round trips.</strong></h2>
     <div class="flow-visual">
       <div class="flow-connector">
         <div class="flow-connector-line"></div>
         <div class="flow-connector-line"></div>
       </div>
-      <div class="flow-step">
+      <div class="flow-step" data-stagger="3">
         <div class="flow-step-icon">&#127908;</div>
         <h4>Speak</h4>
         <p>Hold your hotkey and talk naturally. Audio stays in memory.</p>
       </div>
-      <div class="flow-step">
+      <div class="flow-step" data-stagger="4">
         <div class="flow-step-icon">&#9000;</div>
         <h4>Transcribe</h4>
         <p>Whisper processes your audio locally with Metal GPU acceleration.</p>
       </div>
-      <div class="flow-step">
+      <div class="flow-step" data-stagger="5">
         <div class="flow-step-icon">&#9889;</div>
         <h4>Execute</h4>
         <p>Commands run instantly. Dictation types at your cursor position.</p>
@@ -726,10 +763,10 @@
 
   <!-- PRINCIPLES -->
   <section class="principles reveal" id="principles">
-    <div class="section-label">Design Principles</div>
-    <h2 class="section-title">Built on <strong>three constraints</strong> that make everything better</h2>
+    <div class="section-label" data-stagger="1">Design principles</div>
+    <h2 class="section-title" data-stagger="2">Built on <strong>three constraints</strong> that make everything better</h2>
     <div class="principles-grid">
-      <div class="principle">
+      <div class="principle" data-stagger="3">
         <div class="principle-icon">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         </div>
@@ -737,7 +774,7 @@
         <h3>Nothing leaves your Mac</h3>
         <p>Audio capture, Whisper inference, and keyboard execution all happen locally. Zero network calls. Your voice data is never stored.</p>
       </div>
-      <div class="principle">
+      <div class="principle" data-stagger="4">
         <div class="principle-icon">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         </div>
@@ -745,7 +782,7 @@
         <h3>Press and speak</h3>
         <p>One hotkey. No wake words, no activation delays, no "hey Sotto." The pill overlay shows real-time audio levels while you talk.</p>
       </div>
-      <div class="principle">
+      <div class="principle" data-stagger="5">
         <div class="principle-icon">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
         </div>
@@ -761,37 +798,41 @@
   <!-- ARCHITECTURE -->
   <section class="arch reveal">
     <div style="padding-top: 140px;">
-      <div class="section-label">Architecture</div>
-      <h2 class="section-title">Three processes, <strong>one protocol</strong></h2>
+      <div class="section-label" data-stagger="1">Architecture</div>
+      <h2 class="section-title" data-stagger="2">Three processes, <strong>one protocol</strong></h2>
     </div>
     <div class="arch-flow">
-      <div class="arch-node">
+      <div class="arch-node" data-stagger="3">
         <div class="arch-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <!-- Tauri logo -->
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.912 2.652c.247-.636.758-1.14 1.408-1.386a2.385 2.385 0 0 1 1.974.107c.59.318 1.012.863 1.17 1.489.15.622.035 1.28-.329 1.827a10.189 10.189 0 0 1 2.642 4.373c.605 2.128.51 4.408-.275 6.478a10.178 10.178 0 0 1-3.94 4.788 10.23 10.23 0 0 1-5.877 1.768 10.23 10.23 0 0 1-3.006-.507 2.398 2.398 0 0 1-1.263 1.072 2.385 2.385 0 0 1-1.974-.107 2.393 2.393 0 0 1-1.17-1.49 2.386 2.386 0 0 1 .33-1.826 10.189 10.189 0 0 1-2.643-4.373A10.201 10.201 0 0 1 1.134 9.39a10.178 10.178 0 0 1 3.94-4.789A10.23 10.23 0 0 1 10.95 2.83c1.03 0 2.04.173 3.006.508a2.372 2.372 0 0 1-.044-. 686zM8.274 9.291a2.878 2.878 0 0 0-1.63 1.46 2.862 2.862 0 0 0-.068 2.18 2.866 2.866 0 0 0 1.498 1.614 2.884 2.884 0 0 0 2.186.04 2.878 2.878 0 0 0 1.63-1.46 2.862 2.862 0 0 0 .068-2.181 2.866 2.866 0 0 0-1.498-1.614 2.884 2.884 0 0 0-2.186-.04zm5.318 4.132a2.878 2.878 0 0 0 1.63-1.46 2.862 2.862 0 0 0 .068-2.18 2.866 2.866 0 0 0-1.498-1.615 2.884 2.884 0 0 0-2.186-.039 2.878 2.878 0 0 0-1.63 1.46 2.862 2.862 0 0 0-.068 2.18 2.866 2.866 0 0 0 1.498 1.614 2.884 2.884 0 0 0 2.186.04z"/></svg>
         </div>
         <h4>Tauri Shell</h4>
         <p>Rust manages windows, tray, and global shortcuts</p>
       </div>
-      <div class="arch-arrow">&rarr;</div>
-      <div class="arch-node">
+      <div class="arch-arrow" data-stagger="4">&rarr;</div>
+      <div class="arch-node" data-stagger="5">
         <div class="arch-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          <!-- React logo -->
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.31 0-.592.067-.838.182C4.986 2.125 4.467 3.7 4.866 6.03c-2.322.632-3.818 1.764-3.818 3.053 0 1.289 1.497 2.41 3.83 3.042-.41 2.373.064 3.966 1.358 4.575.246.116.527.17.838.17 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.31 0 .592-.056.838-.171 1.294-.61 1.768-2.202 1.369-4.536 2.344-.643 3.841-1.775 3.841-3.064 0-1.289-1.497-2.42-3.83-3.052.4-2.33-.075-3.925-1.369-4.536a1.737 1.737 0 0 0-.849-.17zM12 16.878c-.823 0-1.669-.036-2.516-.106a25.02 25.02 0 0 1-2.158-2.447 25.122 25.122 0 0 1-1.66-2.802 25.122 25.122 0 0 1 1.66-2.802c.655-.888 1.38-1.716 2.148-2.457.849-.07 1.697-.106 2.526-.106.823 0 1.669.036 2.516.106a25.02 25.02 0 0 1 2.158 2.447c.597.859 1.15 1.79 1.66 2.802a25.122 25.122 0 0 1-1.66 2.802 25.02 25.02 0 0 1-2.148 2.457c-.849.07-1.697.106-2.526.106z"/></svg>
         </div>
         <h4>React Pill</h4>
         <p>Real-time waveform, state transitions, settings UI</p>
       </div>
-      <div class="arch-arrow">&rarr;</div>
-      <div class="arch-node">
+      <div class="arch-arrow" data-stagger="6">&rarr;</div>
+      <div class="arch-node" data-stagger="7">
         <div class="arch-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <!-- Python logo -->
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.914 0C5.82 0 6.2 2.656 6.2 2.656l.007 2.752h5.814v.826H3.9S0 5.789 0 11.969c0 6.18 3.403 5.96 3.403 5.96h2.03v-2.867s-.109-3.402 3.35-3.402h5.766s3.24.052 3.24-3.133V3.545S18.28 0 11.914 0zM8.708 2.048c.588 0 1.064.477 1.064 1.064 0 .588-.477 1.064-1.064 1.064-.588 0-1.064-.477-1.064-1.064 0-.587.477-1.064 1.064-1.064z"/><path d="M12.087 24c6.093 0 5.713-2.656 5.713-2.656l-.007-2.752h-5.814v-.826h8.123S24 18.211 24 12.031c0-6.18-3.403-5.96-3.403-5.96h-2.03v2.867s.109 3.402-3.35 3.402H9.45s-3.24-.052-3.24 3.133v4.982S5.72 24 12.087 24zm3.206-2.048a1.064 1.064 0 1 1 0-2.128 1.064 1.064 0 0 1 0 2.128z"/></svg>
         </div>
         <h4>Python Sidecar</h4>
         <p>Audio capture, Whisper, intent parsing, execution</p>
       </div>
-      <div class="arch-arrow">&rarr;</div>
-      <div class="arch-node">
+      <div class="arch-arrow" data-stagger="8">&rarr;</div>
+      <div class="arch-node" data-stagger="9">
         <div class="arch-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <!-- JSON/Code brackets -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </div>
         <h4>JSON IPC</h4>
         <p>stdin/stdout protocol, no HTTP, no sockets</p>
@@ -799,23 +840,55 @@
     </div>
   </section>
 
-  <!-- TECH -->
+  <!-- TECH STACK -->
   <section class="tech reveal" id="stack">
-    <div class="section-label">Stack</div>
-    <h2 class="section-title">Boring tools, <strong>interesting architecture</strong></h2>
+    <div class="section-label" data-stagger="1">Stack</div>
+    <h2 class="section-title" data-stagger="2">Boring tools, <strong>interesting architecture</strong></h2>
     <div class="tech-list">
-      <span class="tech-tag">Tauri v2</span>
-      <span class="tech-tag">Rust</span>
-      <span class="tech-tag">React 19</span>
-      <span class="tech-tag">TypeScript</span>
-      <span class="tech-tag">Python 3.11</span>
-      <span class="tech-tag">faster-whisper</span>
-      <span class="tech-tag">sounddevice</span>
-      <span class="tech-tag">pynput</span>
-      <span class="tech-tag">PyInstaller</span>
-      <span class="tech-tag">Tailwind v4</span>
-      <span class="tech-tag">Metal GPU</span>
-      <span class="tech-tag">serde_yml</span>
+      <span class="tech-tag" data-stagger="3">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.912 2.652c.247-.636.758-1.14 1.408-1.386a2.385 2.385 0 0 1 1.974.107c.59.318 1.012.863 1.17 1.489.15.622.035 1.28-.329 1.827a10.189 10.189 0 0 1 2.642 4.373c.605 2.128.51 4.408-.275 6.478a10.178 10.178 0 0 1-3.94 4.788 10.23 10.23 0 0 1-5.877 1.768 10.23 10.23 0 0 1-3.006-.507 2.398 2.398 0 0 1-1.263 1.072 2.385 2.385 0 0 1-1.974-.107 2.393 2.393 0 0 1-1.17-1.49 2.386 2.386 0 0 1 .33-1.826 10.189 10.189 0 0 1-2.643-4.373A10.201 10.201 0 0 1 1.134 9.39a10.178 10.178 0 0 1 3.94-4.789A10.23 10.23 0 0 1 10.95 2.83c1.03 0 2.04.173 3.006.508a2.372 2.372 0 0 1-.044-.686z"/></svg>
+        Tauri v2
+      </span>
+      <span class="tech-tag" data-stagger="4">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.8346 11.7033l-3.2153-5.1574-3.4945.007L12.006.0039 6.8753 6.5529l-3.4946-.007L.1654 11.7033 3.3807 16.861l-.007 3.4944 5.1574 3.2154L12.006 24l3.4746-4.5747 5.1574-3.2154-.007-3.4944 3.2146-5.0122h-.0101zM12.006 16.473a4.467 4.467 0 1 1 0-8.934 4.467 4.467 0 0 1 0 8.934z"/></svg>
+        Rust
+      </span>
+      <span class="tech-tag" data-stagger="5">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.31 0-.592.067-.838.182C4.986 2.125 4.467 3.7 4.866 6.03c-2.322.632-3.818 1.764-3.818 3.053 0 1.289 1.497 2.41 3.83 3.042-.41 2.373.064 3.966 1.358 4.575.246.116.527.17.838.17 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.31 0 .592-.056.838-.171 1.294-.61 1.768-2.202 1.369-4.536 2.344-.643 3.841-1.775 3.841-3.064 0-1.289-1.497-2.42-3.83-3.052.4-2.33-.075-3.925-1.369-4.536a1.737 1.737 0 0 0-.849-.17z"/></svg>
+        React 19
+      </span>
+      <span class="tech-tag" data-stagger="6">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1.125 0C.502 0 0 .502 0 1.125v21.75C0 23.498.502 24 1.125 24h21.75c.623 0 1.125-.502 1.125-1.125V1.125C24 .502 23.498 0 22.875 0zm17.363 9.75c.612 0 1.154.037 1.677.12a6.988 6.988 0 0 1 1.418.391v2.03a3.617 3.617 0 0 0-.832-.517 3.946 3.946 0 0 0-1.643-.365c-.363 0-.642.063-.838.185-.196.122-.294.303-.294.541 0 .186.08.346.236.479a2.54 2.54 0 0 0 .61.343c.217.09.451.186.706.29.372.141.705.299.996.474.29.176.53.4.712.663.183.265.275.596.275.992 0 .546-.148.986-.444 1.324-.296.338-.692.588-1.189.747-.496.16-1.047.239-1.651.239-.755 0-1.38-.06-1.876-.18a4.01 4.01 0 0 1-1.227-.517v-2.138c.4.348.857.608 1.367.781.51.174 1.005.262 1.484.262.356 0 .627-.052.813-.155.186-.104.279-.264.279-.478 0-.194-.094-.362-.282-.503a3.12 3.12 0 0 0-.71-.36c-.261-.105-.538-.213-.83-.325a4.478 4.478 0 0 1-1.536-1.006c-.37-.423-.555-.95-.555-1.583 0-.56.147-1.023.44-1.387.293-.365.69-.636 1.189-.812.498-.176 1.06-.264 1.684-.264zM5.992 9.846H9.12v4.08h3.363V9.846h3.13v10.147h-3.13v-4.08H9.12v4.08H5.992z"/></svg>
+        TypeScript
+      </span>
+      <span class="tech-tag" data-stagger="7">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.914 0C5.82 0 6.2 2.656 6.2 2.656l.007 2.752h5.814v.826H3.9S0 5.789 0 11.969c0 6.18 3.403 5.96 3.403 5.96h2.03v-2.867s-.109-3.402 3.35-3.402h5.766s3.24.052 3.24-3.133V3.545S18.28 0 11.914 0zM8.708 2.048c.588 0 1.064.477 1.064 1.064 0 .588-.477 1.064-1.064 1.064-.588 0-1.064-.477-1.064-1.064 0-.587.477-1.064 1.064-1.064z"/><path d="M12.087 24c6.093 0 5.713-2.656 5.713-2.656l-.007-2.752h-5.814v-.826h8.123S24 18.211 24 12.031c0-6.18-3.403-5.96-3.403-5.96h-2.03v2.867s.109 3.402-3.35 3.402H9.45s-3.24-.052-3.24 3.133v4.982S5.72 24 12.087 24zm3.206-2.048a1.064 1.064 0 1 1 0-2.128 1.064 1.064 0 0 1 0 2.128z"/></svg>
+        Python 3.11
+      </span>
+      <span class="tech-tag" data-stagger="8">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-.727 19.11c-.34.18-.727.12-.993-.12l-4.413-3.967c-.42-.38-.46-1.033-.094-1.453l1.42-1.594c.38-.42 1.033-.46 1.453-.094l2.247 2.02 5.3-6.347c.354-.42 1-.48 1.42-.127l1.633 1.367c.42.354.48 1 .127 1.42l-7.107 8.5c-.24.294-.66.494-.993.394z"/></svg>
+        faster-whisper
+      </span>
+      <span class="tech-tag" data-stagger="9">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14.316c-2.578 0-5.093 1.976-5.093 4.391 0 2.414 2.515 4.386 5.093 4.386s5.093-1.972 5.093-4.386c0-2.415-2.515-4.391-5.093-4.391zm0 6.854c-1.428 0-2.586-1.105-2.586-2.463 0-1.36 1.158-2.468 2.586-2.468s2.586 1.107 2.586 2.468c0 1.358-1.158 2.463-2.586 2.463z"/><path d="M11.016.907C6.758.907 3.3 4.363 3.3 8.62c0 2.044.808 4 2.253 5.438L12 22.166l6.447-8.107A8.607 8.607 0 0 0 20.7 8.62c0-4.257-3.458-7.713-7.716-7.713h-1.968zM12 12.163a3.553 3.553 0 1 1 0-7.106 3.553 3.553 0 0 1 0 7.106z"/></svg>
+        sounddevice
+      </span>
+      <span class="tech-tag" data-stagger="10">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        pynput
+      </span>
+      <span class="tech-tag" data-stagger="11">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 9.51a4.22 4.22 0 0 1-1.91-1.34A5.77 5.77 0 0 0 12 6a5.77 5.77 0 0 0-4.59 2.17 4.22 4.22 0 0 1-1.91 1.34A2.16 2.16 0 0 0 4 11.6V14a8 8 0 0 0 16 0v-2.4a2.16 2.16 0 0 0-1.5-2.09z"/></svg>
+        PyInstaller
+      </span>
+      <span class="tech-tag" data-stagger="12">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624 1.177 1.194 2.538 2.576 5.512 2.576 3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.337 13.382 8.976 12 6.001 12z"/></svg>
+        Tailwind v4
+      </span>
+      <span class="tech-tag" data-stagger="12">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.178 0h17.644A3.178 3.178 0 0 1 24 3.178v17.644A3.178 3.178 0 0 1 20.822 24H3.178A3.178 3.178 0 0 1 0 20.822V3.178A3.178 3.178 0 0 1 3.178 0zM12 5.4a6.6 6.6 0 1 0 0 13.2 6.6 6.6 0 0 0 0-13.2zm5.2 3.8h2.4v5.6h-2.4z"/></svg>
+        Metal GPU
+      </span>
     </div>
   </section>
 
@@ -823,13 +896,13 @@
 
   <!-- CTA -->
   <section class="cta reveal">
-    <h2>Built by <strong><a href="https://github.com/vedantggwp" style="color:var(--amber);text-decoration:none">Ved</a></strong></h2>
-    <p class="cta-sub">MIT Licensed. Clone it. Break it. Make it yours.</p>
-    <a href="https://github.com/vedantggwp/Sotto" class="btn-primary" style="margin-top:4px">
+    <h2 data-stagger="1">Built by <strong><a href="https://github.com/vedantggwp" style="color:var(--amber);text-decoration:none">Ved</a></strong></h2>
+    <p class="cta-sub" data-stagger="2">MIT Licensed. Clone it. Break it. Make it yours.</p>
+    <a href="https://github.com/vedantggwp/Sotto" class="btn-primary" style="margin-top:4px" data-stagger="3">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
       View on GitHub
     </a>
-    <div class="cta-code">
+    <div class="cta-code" data-stagger="4">
       <span class="cta-prompt">$</span> git clone https://github.com/vedantggwp/Sotto.git
     </div>
   </section>
@@ -839,7 +912,7 @@
   </footer>
 
   <script>
-    // Demo GIF loader — tries to load demo.gif, keeps placeholder if missing
+    // Demo GIF loader
     (function() {
       var img = new Image();
       img.onload = function() {
@@ -855,7 +928,7 @@
       img.src = 'demo.gif';
     })();
 
-    // Scroll reveal
+    // Staggered scroll reveal with IntersectionObserver
     (function() {
       var reveals = document.querySelectorAll('.reveal');
       var observer = new IntersectionObserver(function(entries) {
@@ -865,7 +938,7 @@
             observer.unobserve(entry.target);
           }
         });
-      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
 
       reveals.forEach(function(el) { observer.observe(el); });
     })();
