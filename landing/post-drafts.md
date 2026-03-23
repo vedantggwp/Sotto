@@ -2,31 +2,49 @@
 
 ## LinkedIn
 
-I got tired of every voice tool sending my audio to someone else's server.
+Three months ago I wanted to talk to my Mac and have it just do things. Not Siri. Not some cloud thing where my voice goes to a server in Virginia. Local. On my machine. Like having a co-pilot who lives inside the hardware.
 
-So I built Sotto. It's a macOS app that gives you push-to-talk dictation and 30+ voice commands, all running locally on your machine. You press a hotkey, speak, and either text appears at your cursor or a system command fires. No cloud. No API calls. No audio ever leaves your Mac.
+So I built it. Python, Whisper, a bunch of keyboard automation. It worked. You could say "open Safari" and Safari would open. Felt like magic for about two days.
 
-The architecture was the interesting part. Tauri v2 handles the Rust shell and window management. React renders a minimal floating pill that shows your recording state and a live waveform. A Python sidecar running faster-whisper does the actual speech recognition, communicating with the frontend through stdin/stdout JSON. On Apple Silicon, it uses Metal GPU acceleration through CTranslate2, so transcription is near-instant.
+Then I found Wispr Flow.
 
-I built the whole thing with Claude Code as my primary dev tool. Not as a novelty, but because it's genuinely how I ship software now. The process itself is part of the product for me.
+They had already built what I was trying to build. Except theirs was actually good. Polished. Production-grade. The kind of thing where you use it once and go "oh, I was never going to get here."
 
-Sotto is open source and MIT licensed.
+So I just... used theirs. Deleted my version from my daily workflow. No drama.
+
+I think most builders can't do this. There's this thing where you've put hours into something and now it's YOUR thing and you can't let go even when the better version is right there. It's like holding onto a gym routine that stopped working three months ago because you designed it yourself. The ego is in the authorship, not the outcome.
+
+Anyway. Three months pass. I'm using Claude Code every day for everything. Building entire apps by describing what I want. Something shifted in how I think about software. Less "how do I code this" and more "what should this system look like and how do the pieces talk to each other."
+
+I came back to Sotto.
+
+Two days. Tauri v2 for the desktop shell. React for this little floating pill that shows you it's listening. Python running Whisper in the background. All of it talking over stdin/stdout JSON.
+
+If you asked me to explain how any of that works at a technical level, I'd give you analogies. That's how I think. I don't write code. I describe what I want built, and I build it with AI. Took me a while to stop seeing that as a limitation.
+
+Is it as good as Wispr Flow? Not even close. That's fine.
+
+I'm open sourcing it because maybe someone picks it up and makes it better. Maybe someone reads the architecture and teaches me why half of it is wrong. Either way I learn something.
+
+If the code embarrasses me, good. That means I'm sharing something real instead of waiting until it's perfect, which for me means waiting forever.
 
 GitHub: github.com/vedantggwp/Sotto
-Landing page: getsotto.vercel.app
-
-If you work on a Mac and talk faster than you type, give it a try.
+Landing page: vedantggwp.github.io/Sotto
 
 ---
 
 ## X / Twitter
 
 ```
-built a macos app that does voice control without touching the cloud
+three months ago i tried to build voice control for my mac
 
-whisper AI runs locally on your mac. press a hotkey, speak, text appears at your cursor. 30+ system commands. zero network calls
+found wispr flow doing it 10x better, dropped my version, used theirs
 
-built entirely with claude code
+came back three months later with new skills and rebuilt the whole thing in two days
+
+it's not as good as wispr. open sourcing it anyway. if it embarrasses me that's fine
+
+learning is the goal
 
 github.com/vedantggwp/Sotto
 ```
